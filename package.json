@@ -1,5 +1,5 @@
 {
-  "name": "openroutercli",
+  "name": "@aaronjmars/openroutercli",
   "version": "0.1.2",
   "description": "Command-line interface for the OpenRouter API. Built for humans and LLM agents.",
   "type": "module",
