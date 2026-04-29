@@ -1,0 +1,52 @@
+{
+  "name": "openrouter",
+  "version": "0.1.0",
+  "description": "Command-line interface for the OpenRouter API. Built for humans and LLM agents.",
+  "type": "module",
+  "bin": {
+    "openrouter": "./bin/openrouter.js",
+    "or": "./bin/openrouter.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "files": [
+    "bin",
+    "src",
+    "README.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "openrouter",
+    "cli",
+    "llm",
+    "ai",
+    "chat",
+    "agent",
+    "claude",
+    "gpt",
+    "openai",
+    "anthropic",
+    "embeddings",
+    "tts",
+    "rerank",
+    "oauth"
+  ],
+  "license": "MIT",
+  "author": "aaronjmars",
+  "homepage": "https://github.com/aaronjmars/openroutercli#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aaronjmars/openroutercli.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aaronjmars/openroutercli/issues"
+  },
+  "preferGlobal": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "start": "node bin/openrouter.js"
+  }
+}

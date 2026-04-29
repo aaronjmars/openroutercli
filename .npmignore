@@ -1,0 +1,23 @@
+# source
+.git
+.github
+.vscode
+.idea
+
+# tests / scratch
+test
+tests
+__tests__
+*.test.js
+/tmp
+.DS_Store
+
+# config we don't want to ship
+.npmrc
+.editorconfig
+.eslintrc*
+.prettierrc*
+
+# docs that aren't needed in the package
+docs/
+CHANGELOG.md

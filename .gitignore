@@ -1,0 +1,12 @@
+node_modules/
+*.log
+*.tgz
+.DS_Store
+.env
+.env.local
+.npmrc
+
+# editor
+.vscode/
+.idea/
+*.swp
