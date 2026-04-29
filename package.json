@@ -14,7 +14,8 @@
     "bin",
     "src",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "openrouter-logo.jpeg"
   ],
   "keywords": [
     "openrouter",

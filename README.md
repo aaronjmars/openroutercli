@@ -1,8 +1,12 @@
 <p align="center">
-  <img src="./docs/images/openrouter-cli.png" alt="openrouter-cli" width="120" />
+  <img src="./openrouter-logo.jpeg" alt="openrouter-cli" width="120" />
 </p>
 
 <h1 align="center">openrouter-cli</h1>
+
+<p align="center">
+  <em>Unofficial — not affiliated with or endorsed by OpenRouter.</em>
+</p>
 
 <p align="center">
   <a href="https://www.npmjs.com/package/openrouter"><img src="https://img.shields.io/npm/v/openrouter?style=flat-square&logo=npm&color=cb3837" alt="npm version"></a>
@@ -15,10 +19,6 @@
 <p align="center">
   <strong>Every OpenRouter endpoint, on the command line — for humans and LLM agents</strong><br>
   Browser-based OAuth login, full access to chat / messages / responses / embeddings / rerank / audio / video / models / providers / generations / credits / activity / keys / guardrails / workspaces, and a raw <code>request</code> escape hatch. <code>--json</code> on every command. Zero npm dependencies.
-</p>
-
-<p align="center">
-  <img src="./docs/images/openrouter-cli.gif" alt="openrouter-cli demo" />
 </p>
 
 ---
@@ -52,10 +52,6 @@ openrouter credits                                          # what's left in the
 ```
 
 **Other paths** — drop in an existing key with `openrouter login --key sk-or-...`, pipe one in with `--stdin`, or set `OPENROUTER_API_KEY` for ephemeral use. Management keys (for `keys` / `guardrails` / `workspaces` / `activity`) come from the [dashboard](https://openrouter.ai/settings/provisioning-keys) and are saved with `openrouter login --management`.
-
-<p align="center">
-  <img src="./docs/images/openrouter-cli-overview.jpg" alt="openrouter-cli overview" />
-</p>
 
 ## Features
 
@@ -188,9 +184,14 @@ Endpoint coverage map:
 
 Config file: `~/.config/openrouter/config.json` (or `$XDG_CONFIG_HOME/openrouter/`), `0600` perms.
 
-## License
+## License & disclaimer
 
 MIT. See [LICENSE](./LICENSE).
+
+This is an **unofficial** community project. It is not affiliated with,
+endorsed by, or sponsored by OpenRouter. "OpenRouter" and the OpenRouter
+logo are trademarks of their respective owners; usage here is for
+identification only.
 
 ## Star History
 
