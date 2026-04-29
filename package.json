@@ -1,6 +1,6 @@
 {
   "name": "openrouter",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Command-line interface for the OpenRouter API. Built for humans and LLM agents.",
   "type": "module",
   "bin": {
