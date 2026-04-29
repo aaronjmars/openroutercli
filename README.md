@@ -53,6 +53,19 @@ openrouter credits                                          # what's left in the
 
 **Other paths** — drop in an existing key with `openrouter login --key sk-or-...`, pipe one in with `--stdin`, or set `OPENROUTER_API_KEY` for ephemeral use. Management keys (for `keys` / `guardrails` / `workspaces` / `activity`) come from the [dashboard](https://openrouter.ai/settings/provisioning-keys) and are saved with `openrouter login --management`.
 
+### Two key types — user vs management
+
+<p align="center">
+  <img src="./keys.png" alt="User key vs management key — what each one unlocks" />
+</p>
+
+The CLI keeps a separate slot for each key type and auto-routes per command.
+`--key sk-or-...` always wins as an override; otherwise inference reaches for
+the user slot, account-management commands reach for the management slot, and
+either falls back to the other when one slot is empty. Management keys
+**cannot** be obtained via OAuth — mint one in the [dashboard](https://openrouter.ai/settings/provisioning-keys)
+and run `openrouter login --management`.
+
 ## Features
 
 | Feature | What it does |
