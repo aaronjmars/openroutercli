@@ -14,8 +14,18 @@ import { requestCommand } from './commands/request.js';
 import { guardrailsCommand } from './commands/guardrails.js';
 import { workspacesCommand } from './commands/workspaces.js';
 import { orgCommand, zdrCommand, authCodeCommand } from './commands/misc.js';
+import { readFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+import { dirname, join } from 'node:path';
 
-const VERSION = '0.1.0';
+const VERSION = (() => {
+  try {
+    const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+    return JSON.parse(readFileSync(pkgPath, 'utf8')).version;
+  } catch {
+    return 'unknown';
+  }
+})();
 
 const COMMANDS = {
   login: loginCommand,
