@@ -9,8 +9,8 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/openrouter"><img src="https://img.shields.io/npm/v/openrouter?style=flat-square&logo=npm&color=cb3837" alt="npm version"></a>
-  <a href="https://www.npmjs.com/package/openrouter"><img src="https://img.shields.io/npm/dm/openrouter?style=flat-square&logo=npm&color=cb3837" alt="npm downloads"></a>
+  <a href="https://www.npmjs.com/package/@aaronjmars/openrouter"><img src="https://img.shields.io/npm/v/%40aaronjmars%2Fopenrouter?style=flat-square&logo=npm&color=cb3837" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/@aaronjmars/openrouter"><img src="https://img.shields.io/npm/dm/%40aaronjmars%2Fopenrouter?style=flat-square&logo=npm&color=cb3837" alt="npm downloads"></a>
   <a href="https://github.com/aaronjmars/openroutercli/stargazers"><img src="https://img.shields.io/github/stars/aaronjmars/openroutercli?style=flat-square&logo=github" alt="GitHub stars"></a>
   <a href="https://github.com/aaronjmars/openroutercli/network/members"><img src="https://img.shields.io/github/forks/aaronjmars/openroutercli?style=flat-square&logo=github" alt="GitHub forks"></a>
   <a href="https://openrouter.ai/"><img src="https://img.shields.io/badge/Powered%20by-OpenRouter-6E4AFF?style=flat-square&labelColor=1a1a2e" alt="Powered by OpenRouter"></a>
@@ -38,8 +38,8 @@ The recommended path: **install with npm + `openrouter login`.** First request i
 
 Install:
 
-- **npm** — `npm install -g openrouter`
-- **npx** *(no install)* — `npx openrouter --help`
+- **npm** — `npm install -g @aaronjmars/openrouter`
+- **npx** *(no install)* — `npx -p @aaronjmars/openrouter openrouter --help`
 - **From source** — `git clone https://github.com/aaronjmars/openroutercli && cd openroutercli && npm link`
 
 Then:
