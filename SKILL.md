@@ -30,10 +30,10 @@ strategy without any actual API calls.
 
 ```bash
 # Recommended
-npm install -g @aaronjmars/openrouter
+npm install -g openroutercli
 
 # No install
-npx -p @aaronjmars/openrouter openrouter --help
+npx -p openroutercli openrouter --help
 
 # From source
 git clone https://github.com/aaronjmars/openroutercli && cd openroutercli && npm link
