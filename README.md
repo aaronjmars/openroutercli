@@ -136,6 +136,7 @@ openrouter request GET /endpoints/zdr
 |---|---|
 | `openrouter --help` | Top-level command index |
 | `openrouter <command> --help` | Per-command flags + examples |
+| [SKILL.md](./SKILL.md) | Drop-in skill description for LLM agents (Claude Code / Cursor / etc.) — what to use, when, how, with patterns and pitfalls |
 | [OpenRouter API docs](https://openrouter.ai/docs) | Upstream API reference |
 | [OpenRouter dashboard](https://openrouter.ai/keys) | Manage keys, billing, workspaces in the browser |
 | [Provisioning keys](https://openrouter.ai/settings/provisioning-keys) | Where management keys are minted |
