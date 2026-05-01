@@ -78,6 +78,16 @@ async function imageToContent(value) {
   };
 }
 
+function applySamplingOptions(body, values) {
+  if (values.models) body.models = values.models.split(',').map((s) => s.trim());
+  if (values.temperature != null) body.temperature = Number(values.temperature);
+  if (values['top-p'] != null) body.top_p = Number(values['top-p']);
+  if (values['max-tokens'] != null) body.max_tokens = Number(values['max-tokens']);
+  if (values.seed != null) body.seed = Number(values.seed);
+  if (values.stop) body.stop = values.stop.split(',');
+  if (values.reasoning) body.reasoning = { effort: values.reasoning };
+}
+
 async function buildBody(values, prompt) {
   const messages = [];
   if (values.system) messages.push({ role: 'system', content: values.system });
@@ -98,12 +108,7 @@ async function buildBody(values, prompt) {
     model: values.model || 'openrouter/auto',
     messages
   };
-  if (values.models) body.models = values.models.split(',').map((s) => s.trim());
-  if (values.temperature != null) body.temperature = Number(values.temperature);
-  if (values['top-p'] != null) body.top_p = Number(values['top-p']);
-  if (values['max-tokens'] != null) body.max_tokens = Number(values['max-tokens']);
-  if (values.seed != null) body.seed = Number(values.seed);
-  if (values.stop) body.stop = values.stop.split(',');
+  applySamplingOptions(body, values);
 
   if (values['json-output']) body.response_format = { type: 'json_object' };
   if (values.schema) {
@@ -127,7 +132,6 @@ async function buildBody(values, prompt) {
     if (['auto', 'none', 'required'].includes(v)) body.tool_choice = v;
     else body.tool_choice = { type: 'function', function: { name: v } };
   }
-  if (values.reasoning) body.reasoning = { effort: values.reasoning };
   if (values.provider) body.provider = await loadJsonOrFile(values.provider);
   return body;
 }
@@ -286,6 +290,7 @@ async function repl(values, auth) {
       }
       history.push({ role: 'user', content: trimmed });
       const body = { model, messages: history, stream: true };
+      applySamplingOptions(body, values);
       try {
         const res = await api('POST', '/chat/completions', {
           auth,
@@ -300,11 +305,15 @@ async function repl(values, auth) {
             out(delta.content);
             assistant += delta.content;
           }
+          if (delta?.reasoning && process.stdout.isTTY) out(c.dim(delta.reasoning));
         }
         out('\n');
         history.push({ role: 'assistant', content: assistant });
       } catch (err) {
         outln(c.red(err.message));
+        // Drop the orphaned user message so the next turn doesn't send a
+        // [..., user, user] sequence the API will reject.
+        history.pop();
       }
     }
   } finally {
