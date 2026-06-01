@@ -64,7 +64,7 @@ export async function resolveAuth(opts = {}) {
     opts.referer ||
     process.env.OPENROUTER_REFERER ||
     cfg.referer ||
-    'https://github.com/openrouter-cli';
+    'https://github.com/aaronjmars/openroutercli';
   const title =
     opts.title || process.env.OPENROUTER_TITLE || cfg.title || 'openrouter-cli';
   return {

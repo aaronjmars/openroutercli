@@ -318,7 +318,7 @@ openrouter --json keys get <hash> | jq '.data | {usage, usage_daily, limit_remai
 | --- | --- | --- |
 | `-k, --key` | `OPENROUTER_API_KEY` / `OPENROUTER_MANAGEMENT_KEY` | from config |
 | `--base-url` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
-| `--referer` | `OPENROUTER_REFERER` | `https://github.com/openrouter-cli` |
+| `--referer` | `OPENROUTER_REFERER` | `https://github.com/aaronjmars/openroutercli` |
 | `--title` | `OPENROUTER_TITLE` | `openrouter-cli` |
 | `--json` | — | off |
 | `-q, --quiet` | — | off |
