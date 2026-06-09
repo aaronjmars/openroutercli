@@ -25,7 +25,13 @@ OpenAI-compatible /responses endpoint.
 Options:
   -m, --model <id>         Model id (required)
   -s, --instructions <t>   System / instructions
-      --stream             Stream tokens
+      --max-tokens <n>     Sent as max_output_tokens
+      --temperature <n>
+      --top-p <n>
+      --seed <n>
+      --reasoning <effort> low | medium | high
+      --stream             Stream tokens (default when TTY)
+      --no-stream          Disable streaming
       --raw                Print full JSON response
       --body <json|@file>  Provide a fully-formed body (overrides flags)
 `;
@@ -117,7 +123,13 @@ export async function responsesCommand(argv) {
   const { values, positionals } = parseArgs(argv, {
     model: { type: 'string', short: 'm' },
     instructions: { type: 'string', short: 's' },
+    'max-tokens': { type: 'string' },
+    temperature: { type: 'string' },
+    'top-p': { type: 'string' },
+    seed: { type: 'string' },
+    reasoning: { type: 'string' },
     stream: { type: 'boolean' },
+    'no-stream': { type: 'boolean' },
     raw: { type: 'boolean' },
     body: { type: 'string' }
   });
@@ -135,9 +147,18 @@ export async function responsesCommand(argv) {
     if (!prompt) throw new Error('No prompt.');
     body = { model: values.model, input: prompt };
     if (values.instructions) body.instructions = values.instructions;
+    if (values['max-tokens'] != null) body.max_output_tokens = Number(values['max-tokens']);
+    if (values.temperature != null) body.temperature = Number(values.temperature);
+    if (values['top-p'] != null) body.top_p = Number(values['top-p']);
+    if (values.seed != null) body.seed = Number(values.seed);
+    if (values.reasoning) body.reasoning = { effort: values.reasoning };
   }
 
-  if (values.stream) {
+  const shouldStream =
+    values.stream ||
+    (!values['no-stream'] && !values.raw && !isJsonMode() && process.stdout.isTTY);
+
+  if (shouldStream) {
     body.stream = true;
     const res = await api('POST', '/responses', {
       auth: authFromValues(values),
