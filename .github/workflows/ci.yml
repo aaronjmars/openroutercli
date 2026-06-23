@@ -1,0 +1,51 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: Lint & smoke test (Node ${{ matrix.node }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      - name: Syntax-check every tracked source file
+        run: |
+          set -euo pipefail
+          git ls-files '*.js' | while IFS= read -r f; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Smoke test — version resolves
+        run: |
+          set -euo pipefail
+          out="$(node bin/openrouter.js --version)"
+          echo "reported version: $out"
+          test -n "$out"
+
+      - name: Smoke test — help loads the full command graph
+        # `--help` imports every src/commands/* module via src/cli.js,
+        # so this fails on any broken import / ESM extension across the CLI.
+        run: node bin/openrouter.js --help > /dev/null
+
+      - name: Validate published package contents
+        run: npm pack --dry-run
