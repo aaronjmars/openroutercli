@@ -206,7 +206,3 @@ This is an **unofficial** community project. It is not affiliated with,
 endorsed by, or sponsored by OpenRouter. "OpenRouter" and the OpenRouter
 logo are trademarks of their respective owners; usage here is for
 identification only.
-
-## Star History
-
-[![Star History Chart](https://api.star-history.com/svg?repos=aaronjmars/openroutercli&type=Date)](https://www.star-history.com/#aaronjmars/openroutercli&Date)
