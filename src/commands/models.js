@@ -1,6 +1,6 @@
 import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
-import { c, isJsonMode, outln, printResult, table } from '../output.js';
+import { c, isJsonMode, outln, pricePerMillion, printResult, table } from '../output.js';
 
 const HELP = `Usage: openrouter models [subcommand] [options]
 
@@ -32,8 +32,7 @@ function listFormatter(data) {
       label: 'in/out $/M',
       value: (m) => {
         const p = m.pricing || {};
-        const fmt = (x) => (x == null ? '-' : (Number(x) * 1e6).toFixed(2));
-        return `${fmt(p.prompt)}/${fmt(p.completion)}`;
+        return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
       }
     },
     { label: 'name', value: (m) => m.name || '' }
@@ -227,8 +226,7 @@ export async function modelsCommand(argv) {
           label: 'in/out $/M',
           value: (e) => {
             const p = e.pricing || {};
-            const fmt = (x) => (x == null ? '-' : (Number(x) * 1e6).toFixed(2));
-            return `${fmt(p.prompt)}/${fmt(p.completion)}`;
+            return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
           }
         },
         {

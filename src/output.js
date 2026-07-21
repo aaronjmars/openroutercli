@@ -1,3 +1,5 @@
+import { writeFile } from 'node:fs/promises';
+
 const isTTY = process.stdout.isTTY;
 const noColor =
   process.env.NO_COLOR != null ||
@@ -47,6 +49,22 @@ export function info(text) {
 
 export function printJSON(data) {
   process.stdout.write(JSON.stringify(data, null, 2) + '\n');
+}
+
+// OpenRouter prices are per-token; tables show them per million.
+export function pricePerMillion(x) {
+  return x == null ? '-' : (Number(x) * 1e6).toFixed(2);
+}
+
+export async function writeBinaryOutput(bytes, out) {
+  const buf = Buffer.from(bytes);
+  if (out === '-') {
+    process.stdout.write(buf);
+    return;
+  }
+  await writeFile(out, buf);
+  if (JSON_MODE) printJSON({ saved: out, bytes: bytes.length });
+  else info(`Wrote ${bytes.length} bytes to ${out}`);
 }
 
 export function printResult(data, formatter) {

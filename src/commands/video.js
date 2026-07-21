@@ -1,7 +1,6 @@
-import { writeFile } from 'node:fs/promises';
 import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
-import { c, info, outln, printJSON, printResult, isJsonMode } from '../output.js';
+import { c, info, outln, printResult, writeBinaryOutput } from '../output.js';
 
 const HELP = `Usage: openrouter video <subcommand> [options]
 
@@ -38,7 +37,7 @@ export async function videoCommand(argv) {
   if (sub === 'models') {
     const { values } = parseArgs(rest, {});
     const data = await api('GET', '/videos/models', { auth: auth(values) });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -75,7 +74,7 @@ export async function videoCommand(argv) {
     const data = await api('GET', `/videos/${encodeURIComponent(positionals[0])}`, {
       auth: auth(values)
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -95,7 +94,7 @@ export async function videoCommand(argv) {
       const status = data.status || (data.data && data.data.status);
       info(`status: ${status}`);
       if (['succeeded', 'completed', 'failed', 'cancelled', 'error'].includes(status)) {
-        printResult(data, () => outln(JSON.stringify(data, null, 2)));
+        printResult(data);
         return ['failed', 'cancelled', 'error'].includes(status) ? 4 : 0;
       }
       if (Date.now() - start > timeout) {
@@ -115,12 +114,7 @@ export async function videoCommand(argv) {
       binary: true
     });
     const out = values.out || `${positionals[0]}.mp4`;
-    if (out === '-') process.stdout.write(Buffer.from(bytes));
-    else {
-      await writeFile(out, Buffer.from(bytes));
-      if (isJsonMode()) printJSON({ saved: out, bytes: bytes.length });
-      else info(`Wrote ${bytes.length} bytes to ${out}`);
-    }
+    await writeBinaryOutput(bytes, out);
     return 0;
   }
 

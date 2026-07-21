@@ -1,6 +1,6 @@
 import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
-import { c, outln, printResult, table } from '../output.js';
+import { outln, printResult, table } from '../output.js';
 
 const HELP = `Usage: openrouter guardrails <subcommand> [options]
 
@@ -109,7 +109,7 @@ export async function guardrailsCommand(argv) {
       auth: auth(values),
       requiresManagement: true
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -127,7 +127,7 @@ export async function guardrailsCommand(argv) {
       requiresManagement: true,
       body
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -144,7 +144,7 @@ export async function guardrailsCommand(argv) {
       requiresManagement: true,
       body
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -169,7 +169,7 @@ export async function guardrailsCommand(argv) {
       auth: auth(values),
       requiresManagement: true
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -184,7 +184,7 @@ export async function guardrailsCommand(argv) {
       auth: auth(values),
       requiresManagement: true
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -201,7 +201,7 @@ export async function guardrailsCommand(argv) {
       requiresManagement: true,
       body: { key_hashes: hashes }
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -218,7 +218,7 @@ export async function guardrailsCommand(argv) {
       requiresManagement: true,
       body: { user_ids: userIds }
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 

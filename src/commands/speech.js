@@ -1,8 +1,7 @@
-import { writeFile } from 'node:fs/promises';
 import { stdin } from 'node:process';
 import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
-import { info, outln, printJSON, isJsonMode } from '../output.js';
+import { writeBinaryOutput } from '../output.js';
 
 const HELP = `Usage: openrouter speech [text...] [options]
 
@@ -57,12 +56,6 @@ export async function speechCommand(argv) {
   });
 
   const out = values.out || `out.${values.format || 'mp3'}`;
-  if (out === '-') {
-    process.stdout.write(Buffer.from(bytes));
-  } else {
-    await writeFile(out, Buffer.from(bytes));
-    if (isJsonMode()) printJSON({ saved: out, bytes: bytes.length });
-    else info(`Wrote ${bytes.length} bytes to ${out}`);
-  }
+  await writeBinaryOutput(bytes, out);
   return 0;
 }

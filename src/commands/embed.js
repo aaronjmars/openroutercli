@@ -1,7 +1,7 @@
 import { stdin } from 'node:process';
 import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
-import { c, isJsonMode, outln, printResult, table } from '../output.js';
+import { outln, pricePerMillion, printResult, table } from '../output.js';
 
 const HELP = `Usage: openrouter embed [text...] [options]
        openrouter embed models
@@ -38,11 +38,7 @@ export async function embedCommand(argv) {
         { label: 'context', value: (m) => m.context_length ?? '' },
         {
           label: '$/M tokens',
-          value: (m) => {
-            const p = m.pricing || {};
-            const fmt = (x) => (x == null ? '-' : (Number(x) * 1e6).toFixed(2));
-            return fmt(p.prompt);
-          }
+          value: (m) => pricePerMillion((m.pricing || {}).prompt)
         },
         { label: 'name', value: (m) => m.name || '' }
       ]);

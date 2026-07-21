@@ -69,7 +69,7 @@ export async function keysCommand(argv) {
       auth: authFromValues(values),
       requiresManagement: true
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
@@ -128,7 +128,7 @@ export async function keysCommand(argv) {
       requiresManagement: true,
       body
     });
-    printResult(data, () => outln(JSON.stringify(data, null, 2)));
+    printResult(data);
     return 0;
   }
 
