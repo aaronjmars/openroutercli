@@ -26,14 +26,6 @@ export async function saveConfig(cfg) {
   await fs.rename(tmp, CONFIG_FILE);
 }
 
-export async function clearConfig() {
-  try {
-    await fs.unlink(CONFIG_FILE);
-  } catch (err) {
-    if (err.code !== 'ENOENT') throw err;
-  }
-}
-
 export async function resolveAuth(opts = {}) {
   const cfg = await loadConfig();
   const userKey =
@@ -45,12 +37,10 @@ export async function resolveAuth(opts = {}) {
   // the regular key); inference commands prefer the regular key (falling back
   // to the management key).
   let apiKey;
-  let usedManagementSlot = false;
   if (opts.key) {
     apiKey = opts.key;
   } else if (opts.requiresManagement) {
     apiKey = mgmtKey || userKey;
-    usedManagementSlot = !!mgmtKey;
   } else {
     apiKey = userKey || mgmtKey;
   }
@@ -73,7 +63,6 @@ export async function resolveAuth(opts = {}) {
     referer,
     title,
     config: cfg,
-    usedManagementSlot,
     hasManagementKey: !!mgmtKey,
     hasUserKey: !!userKey
   };

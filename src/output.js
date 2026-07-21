@@ -45,10 +45,6 @@ export function info(text) {
   process.stderr.write(c.dim(text) + '\n');
 }
 
-export function warn(text) {
-  process.stderr.write(c.yellow('warning: ') + text + '\n');
-}
-
 export function printJSON(data) {
   process.stdout.write(JSON.stringify(data, null, 2) + '\n');
 }
