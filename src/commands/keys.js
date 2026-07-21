@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, numberOption } from '../args.js';
 import { api } from '../api.js';
 import { c, outln, printResult, table } from '../output.js';
 
@@ -84,7 +84,7 @@ export async function keysCommand(argv) {
     const name = positionals[0];
     if (!name) throw new Error('name required');
     const body = { name };
-    if (values.limit) body.limit = Number(values.limit);
+    if (values.limit) body.limit = numberOption(values.limit, '--limit');
     if (values['limit-reset']) body.limit_reset = values['limit-reset'];
     if (values['expires-at']) body.expires_at = values['expires-at'];
     if (values.workspace) body.workspace_id = values.workspace;
@@ -117,7 +117,7 @@ export async function keysCommand(argv) {
     if (!positionals[0]) throw new Error('hash required');
     const body = {};
     if (values.name) body.name = values.name;
-    if (values.limit) body.limit = Number(values.limit);
+    if (values.limit) body.limit = numberOption(values.limit, '--limit');
     if (values['limit-reset']) body.limit_reset = values['limit-reset'];
     if (values['include-byok']) body.include_byok_in_limit = true;
     if (values['no-include-byok']) body.include_byok_in_limit = false;

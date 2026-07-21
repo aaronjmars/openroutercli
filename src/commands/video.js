@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, numberOption } from '../args.js';
 import { api } from '../api.js';
 import { c, info, outln, printResult, writeBinaryOutput } from '../output.js';
 
@@ -84,8 +84,10 @@ export async function videoCommand(argv) {
       timeout: { type: 'string' }
     });
     if (!positionals[0]) throw new Error('jobId required');
-    const interval = Number(values.interval || 5) * 1000;
-    const timeout = Number(values.timeout || 600) * 1000;
+    const interval = (numberOption(values.interval, '--interval') ?? 5) * 1000;
+    const timeout = (numberOption(values.timeout, '--timeout') ?? 600) * 1000;
+    if (interval <= 0) throw new Error('--interval must be greater than 0');
+    if (timeout <= 0) throw new Error('--timeout must be greater than 0');
     const start = Date.now();
     while (true) {
       const data = await api('GET', `/videos/${encodeURIComponent(positionals[0])}`, {

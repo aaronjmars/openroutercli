@@ -20,6 +20,18 @@ export function parseArgs(argv, options = {}) {
   });
 }
 
+// parseArgs yields strings; a bare Number() turns a typo into NaN, which
+// JSON.stringify serializes as null -- an API request that silently means
+// something else. Fail on the CLI instead.
+export function numberOption(value, flag) {
+  if (value === undefined) return undefined;
+  const n = Number(value);
+  if (String(value).trim() === '' || !Number.isFinite(n)) {
+    throw new Error(`Invalid number for ${flag}: "${value}"`);
+  }
+  return n;
+}
+
 export const PAGINATION_OPTIONS = {
   offset: { type: 'string' },
   limit: { type: 'string' }

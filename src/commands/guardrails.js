@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery } from '../args.js';
+import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery, numberOption } from '../args.js';
 import { api } from '../api.js';
 import { outln, printResult, table } from '../output.js';
 
@@ -41,7 +41,7 @@ function csv(v) {
 function buildBody(values) {
   const body = {};
   if (values.description !== undefined) body.description = values.description;
-  if (values['limit-usd'] !== undefined) body.limit_usd = Number(values['limit-usd']);
+  if (values['limit-usd'] !== undefined) body.limit_usd = numberOption(values['limit-usd'], '--limit-usd');
   if (values['reset-interval'] !== undefined) {
     body.reset_interval = values['reset-interval'] === 'null' ? null : values['reset-interval'];
   }
