@@ -174,7 +174,6 @@ async function streamResponse(body, auth) {
       if (process.stdout.isTTY) out(c.dim(delta.reasoning));
     }
     if (delta.tool_calls) {
-      // Print tool calls JSON-compactly
       for (const tc of delta.tool_calls) {
         if (tc.function && tc.function.arguments) out(tc.function.arguments);
       }
