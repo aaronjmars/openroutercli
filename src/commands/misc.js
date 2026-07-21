@@ -1,21 +1,16 @@
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery } from '../args.js';
 import { api } from '../api.js';
 import { printResult, table } from '../output.js';
 
 export async function orgMembersCommand(argv) {
-  const { values } = parseArgs(argv, {
-    offset: { type: 'string' },
-    limit: { type: 'string' }
-  });
+  const { values } = parseArgs(argv, PAGINATION_OPTIONS);
   if (values.help) {
     process.stdout.write(
       'Usage: openrouter org members [--offset N] [--limit N]\n\nList organization members. Requires a management key.\n'
     );
     return 0;
   }
-  const query = {};
-  if (values.offset) query.offset = values.offset;
-  if (values.limit) query.limit = values.limit;
+  const query = paginationQuery(values);
   const data = await api('GET', '/organization/members', {
     auth: authFromValues(values),
     requiresManagement: true,

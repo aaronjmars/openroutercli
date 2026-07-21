@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery } from '../args.js';
 import { api } from '../api.js';
 import { outln, printResult, table } from '../output.js';
 
@@ -52,13 +52,8 @@ export async function workspacesCommand(argv) {
   const auth = (v) => authFromValues(v);
 
   if (sub === 'list') {
-    const { values } = parseArgs(rest, {
-      offset: { type: 'string' },
-      limit: { type: 'string' }
-    });
-    const query = {};
-    if (values.offset) query.offset = values.offset;
-    if (values.limit) query.limit = values.limit;
+    const { values } = parseArgs(rest, PAGINATION_OPTIONS);
+    const query = paginationQuery(values);
     const data = await api('GET', '/workspaces', {
       auth: auth(values),
       requiresManagement: true,

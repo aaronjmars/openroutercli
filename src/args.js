@@ -20,6 +20,18 @@ export function parseArgs(argv, options = {}) {
   });
 }
 
+export const PAGINATION_OPTIONS = {
+  offset: { type: 'string' },
+  limit: { type: 'string' }
+};
+
+export function paginationQuery(values) {
+  const query = {};
+  if (values.offset) query.offset = values.offset;
+  if (values.limit) query.limit = values.limit;
+  return query;
+}
+
 export function authFromValues(values) {
   const out = {};
   if (values.key) out.key = values.key;

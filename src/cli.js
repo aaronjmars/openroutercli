@@ -14,6 +14,7 @@ import { requestCommand } from './commands/request.js';
 import { guardrailsCommand } from './commands/guardrails.js';
 import { workspacesCommand } from './commands/workspaces.js';
 import { orgCommand, zdrCommand, authCodeCommand } from './commands/misc.js';
+import { DEFAULT_BASE_URL } from './config.js';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -98,7 +99,7 @@ Management (require a management key):
 
 Global options (work with all commands):
   -k, --key <key>        Use this API key instead of the stored one
-      --base-url <url>   Override API base URL (default: https://openrouter.ai/api/v1)
+      --base-url <url>   Override API base URL (default: ${DEFAULT_BASE_URL})
       --referer <url>    HTTP-Referer header (set as your app's URL)
       --title <name>     X-Title header (your app name; appears on openrouter.ai)
       --json             Output JSON (also disables streaming, color, and prompts)
