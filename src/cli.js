@@ -1,4 +1,4 @@
-import { setJsonMode, setQuiet, c, outln } from './output.js';
+import { setJsonMode, setQuiet, outln } from './output.js';
 import { loginCommand, logoutCommand } from './commands/login.js';
 import { whoamiCommand, creditsCommand, activityCommand } from './commands/account.js';
 import { modelsCommand, providersCommand } from './commands/models.js';

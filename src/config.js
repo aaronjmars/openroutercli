@@ -1,10 +1,10 @@
 import { promises as fs } from 'node:fs';
 import { homedir } from 'node:os';
-import { join, dirname } from 'node:path';
+import { join } from 'node:path';
 
 const XDG = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
-export const CONFIG_DIR = join(XDG, 'openrouter');
-export const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
+const CONFIG_DIR = join(XDG, 'openrouter');
+const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 export const DEFAULT_AUTH_URL = 'https://openrouter.ai/auth';
@@ -62,7 +62,6 @@ export async function resolveAuth(opts = {}) {
     baseUrl,
     referer,
     title,
-    config: cfg,
     hasManagementKey: !!mgmtKey,
     hasUserKey: !!userKey
   };

@@ -2,7 +2,7 @@ import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery } from '
 import { api } from '../api.js';
 import { printResult, table } from '../output.js';
 
-export async function orgMembersCommand(argv) {
+async function orgMembersCommand(argv) {
   const { values } = parseArgs(argv, PAGINATION_OPTIONS);
   if (values.help) {
     process.stdout.write(

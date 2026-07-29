@@ -89,7 +89,7 @@ export async function requestCommand(argv) {
     opts.raw = true;
     const res = await api(method, path, opts);
     process.stdout.write(await res.text());
-    return res.ok ? 0 : 2;
+    return 0;
   }
 
   const data = await api(method, path, opts);

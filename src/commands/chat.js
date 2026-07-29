@@ -155,7 +155,6 @@ async function streamResponse(body, auth) {
   });
   let usage = null;
   let model = null;
-  let finishReason = null;
   for await (const evt of sseStream(res)) {
     if (evt.usage) usage = evt.usage;
     if (evt.model) model = evt.model;
@@ -178,10 +177,9 @@ async function streamResponse(body, auth) {
         if (tc.function && tc.function.arguments) out(tc.function.arguments);
       }
     }
-    if (choice.finish_reason) finishReason = choice.finish_reason;
   }
   if (process.stdout.isTTY) out('\n');
-  return { usage, model, finishReason };
+  return { usage, model };
 }
 
 export async function chatCommand(argv) {

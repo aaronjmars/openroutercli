@@ -87,7 +87,6 @@ async function saveKey(apiKey, extra = {}) {
   cfg.apiKey = apiKey;
   Object.assign(cfg, extra);
   await saveConfig(cfg);
-  return cfg;
 }
 
 async function saveManagementKey(apiKey, extra = {}) {
@@ -95,7 +94,6 @@ async function saveManagementKey(apiKey, extra = {}) {
   cfg.managementKey = apiKey;
   Object.assign(cfg, extra);
   await saveConfig(cfg);
-  return cfg;
 }
 
 async function promptManagementKey() {
