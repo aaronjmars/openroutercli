@@ -1,12 +1,12 @@
 ---
 name: openrouter-cli
-description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell — chat / messages / responses, embeddings, rerank, audio, video, model + provider discovery, generation lookup, credits, activity, and full key / guardrail / workspace management. Pass `--json` on every command for machine-parseable output.
+description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell - chat / messages / responses, embeddings, rerank, audio, video, model + provider discovery, generation lookup, credits, activity, and full key / guardrail / workspace management. Pass `--json` on every command for machine-parseable output.
 ---
 
 # openrouter-cli skill
 
 `openrouter` is a zero-dependency Node CLI that wraps the OpenRouter API. It's
-designed for both humans and LLM agents — every command supports `--json` for
+designed for both humans and LLM agents - every command supports `--json` for
 clean piping, has stable exit codes, and reads stdin where useful.
 
 ## When to use this skill
@@ -16,7 +16,7 @@ TRIGGER when the user asks to:
 - pick a cheaper / faster / more reliable model or provider variant
 - look up pricing, throughput, latency, or supported parameters for a model
 - check credits, per-key spend, daily/weekly/monthly usage, or rate limits
-- inspect or audit a specific generation (`gen-...` id) — input, output, cost,
+- inspect or audit a specific generation (`gen-...` id) - input, output, cost,
   latency, finish reason
 - create / list / disable / delete OpenRouter API keys programmatically
 - manage guardrails, workspaces, or organization members
@@ -52,13 +52,13 @@ Three ways, in priority order. The first match wins:
    (`0600`)
 
 ```bash
-# Browser OAuth (PKCE) — recommended for humans
+# Browser OAuth (PKCE) - recommended for humans
 openrouter login
 
 # Save an existing key non-interactively
 openrouter login --key sk-or-v1-...
 echo "sk-or-v1-..." | openrouter login --stdin
-openrouter login --no-browser    # SSH / headless — prints URL, you open it
+openrouter login --no-browser    # SSH / headless - prints URL, you open it
 
 # Inspect / forget
 openrouter whoami
@@ -73,9 +73,9 @@ command automatically.
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
 | **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `video`, `generation`, `credits`, `whoami` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `guardrails`, `workspaces`, `activity`, `org members`, `auth-code` | Dashboard only — <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **Management key** | `keys`, `guardrails`, `workspaces`, `activity`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
-You can store both — they live side by side in the config file. `--key sk-or-...`
+You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
 commands prefer the management key; either falls back to the other if the
 preferred slot is empty.
@@ -165,7 +165,7 @@ openrouter models --supported tools                     # filter by capability
 # Full detail for one model: pricing breakdown, architecture, supported params
 openrouter models show anthropic/claude-sonnet-4.5
 
-# Compare provider variants for one model — find the best one
+# Compare provider variants for one model - find the best one
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter models endpoints openai/gpt-4o-mini --sort latency
 openrouter models endpoints openai/gpt-4o-mini --sort prompt
@@ -185,14 +185,14 @@ openrouter whoami                        # label, daily/weekly/monthly usage, ra
 openrouter generation gen-1234567890     # full per-request metadata + cost
 openrouter generation gen-1234567890 --content   # + the input/output content
 
-# Activity (management key required) — daily aggregates per endpoint
+# Activity (management key required) - daily aggregates per endpoint
 openrouter activity --date 2026-04-28
 openrouter activity --api-key-hash <hash>
 ```
 
 NOTE: `activity` only covers **completed UTC days** in the last 30 days.
 Today's data isn't queryable until tomorrow. There's no per-request log
-endpoint — the only way to inspect a specific in-flight request is by
+endpoint - the only way to inspect a specific in-flight request is by
 `generation <id>` if you saved the id at call time.
 
 `generation` lookups have a ~30-second propagation delay after the request
@@ -210,7 +210,7 @@ openrouter keys delete <hash>
 ```
 
 The full `sk-or-v1-...` secret is returned **only once** in the `create`
-response — capture it then.
+response - capture it then.
 
 ### Guardrails / workspaces / org
 
@@ -295,7 +295,7 @@ openrouter --json keys get <hash> | jq '.data | {usage, usage_daily, limit_remai
 - **`--json` must come BEFORE the subcommand** for the global pre-parser to
   pick it up reliably. `openrouter --json chat ...` (correct), `openrouter
   chat ... --json` also works but is slightly less robust with positionals.
-- **Generation lookups have ~30s lag.** Don't poll faster than that — you'll
+- **Generation lookups have ~30s lag.** Don't poll faster than that - you'll
   just get 404.
 - **Activity is daily-aggregated and only covers completed UTC days.** A
   query for today returns `400 Date must be within the last 30 (completed)
@@ -316,14 +316,15 @@ openrouter --json keys get <hash> | jq '.data | {usage, usage_daily, limit_remai
 
 | flag | env | default |
 | --- | --- | --- |
-| `-k, --key` | `OPENROUTER_API_KEY` / `OPENROUTER_MANAGEMENT_KEY` | from config |
+| `-k, --key` | `OPENROUTER_API_KEY` (alias `OPENROUTER_KEY`) / `OPENROUTER_MANAGEMENT_KEY` | from config |
 | `--base-url` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
 | `--referer` | `OPENROUTER_REFERER` | `https://github.com/aaronjmars/openroutercli` |
 | `--title` | `OPENROUTER_TITLE` | `openrouter-cli` |
-| `--json` | — | off |
-| `-q, --quiet` | — | off |
-| — | `NO_COLOR` | colors on in TTY |
-| — | `OPENROUTER_DEBUG=1` | off |
+| `--json` | - | off |
+| `-q, --quiet` | - | off |
+| `-V, --version` | - | prints version, exits |
+| - | `NO_COLOR` (alias `OPENROUTER_NO_COLOR`) | colors on in TTY |
+| - | `OPENROUTER_DEBUG=1` | off |
 
 Config file location: `$XDG_CONFIG_HOME/openrouter/config.json` (defaults to
 `~/.config/openrouter/config.json`). Created with `0700` dir / `0600` file.
