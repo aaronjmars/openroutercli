@@ -74,13 +74,11 @@ export async function guardrailsCommand(argv) {
     return sub ? 0 : 1;
   }
 
-  const auth = (v) => authFromValues(v);
-
   if (sub === 'list') {
     const { values } = parseArgs(rest, PAGINATION_OPTIONS);
     const query = paginationQuery(values);
     const data = await api('GET', '/guardrails', {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       query
     });
@@ -101,7 +99,7 @@ export async function guardrailsCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (!positionals[0]) throw new Error('id required');
     const data = await api('GET', `/guardrails/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data);
@@ -118,7 +116,7 @@ export async function guardrailsCommand(argv) {
     const body = { name, ...buildBody(values) };
     if (values.workspace) body.workspace_id = values.workspace;
     const data = await api('POST', '/guardrails', {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body
     });
@@ -135,7 +133,7 @@ export async function guardrailsCommand(argv) {
     const body = buildBody(values);
     if (values.name) body.name = values.name;
     const data = await api('PATCH', `/guardrails/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body
     });
@@ -147,7 +145,7 @@ export async function guardrailsCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (!positionals[0]) throw new Error('id required');
     const data = await api('DELETE', `/guardrails/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data, () => outln('deleted'));
@@ -161,7 +159,7 @@ export async function guardrailsCommand(argv) {
     });
     const path = values.members ? '/guardrails/assignments/members' : '/guardrails/assignments/keys';
     const data = await api('GET', path, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data);
@@ -176,7 +174,7 @@ export async function guardrailsCommand(argv) {
         ? `/guardrails/${encodeURIComponent(positionals[0])}/assignments/keys`
         : `/guardrails/${encodeURIComponent(positionals[0])}/assignments/members`;
     const data = await api('GET', path, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data);
@@ -192,7 +190,7 @@ export async function guardrailsCommand(argv) {
       ? `/guardrails/${encodeURIComponent(id)}/assignments/keys`
       : `/guardrails/${encodeURIComponent(id)}/assignments/keys/remove`;
     const data = await api('POST', path, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body: { key_hashes: hashes }
     });
@@ -209,7 +207,7 @@ export async function guardrailsCommand(argv) {
       ? `/guardrails/${encodeURIComponent(id)}/assignments/members`
       : `/guardrails/${encodeURIComponent(id)}/assignments/members/remove`;
     const data = await api('POST', path, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body: { user_ids: userIds }
     });

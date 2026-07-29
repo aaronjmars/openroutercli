@@ -27,7 +27,6 @@ async function sleep(ms) {
 export async function videoCommand(argv) {
   const sub = argv[0];
   const rest = argv.slice(1);
-  const auth = (vals) => authFromValues(vals);
 
   if (!sub || sub === '-h' || sub === '--help' || sub === 'help') {
     process.stdout.write(HELP);
@@ -36,7 +35,7 @@ export async function videoCommand(argv) {
 
   if (sub === 'models') {
     const { values } = parseArgs(rest, {});
-    const data = await api('GET', '/videos/models', { auth: auth(values) });
+    const data = await api('GET', '/videos/models', { auth: authFromValues(values) });
     printResult(data);
     return 0;
   }
@@ -59,7 +58,7 @@ export async function videoCommand(argv) {
     if (values.provider) body.provider = JSON.parse(values.provider);
     if (values.extra) Object.assign(body, JSON.parse(values.extra));
 
-    const data = await api('POST', '/videos', { auth: auth(values), body });
+    const data = await api('POST', '/videos', { auth: authFromValues(values), body });
     printResult(data, () => {
       const id = data.id || data.job_id || (data.data && data.data.id);
       outln(`${c.bold('job:')} ${id}`);
@@ -72,7 +71,7 @@ export async function videoCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (!positionals[0]) throw new Error('jobId required');
     const data = await api('GET', `/videos/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values)
+      auth: authFromValues(values)
     });
     printResult(data);
     return 0;
@@ -91,7 +90,7 @@ export async function videoCommand(argv) {
     const start = Date.now();
     while (true) {
       const data = await api('GET', `/videos/${encodeURIComponent(positionals[0])}`, {
-        auth: auth(values)
+        auth: authFromValues(values)
       });
       const status = data.status || (data.data && data.data.status);
       info(`status: ${status}`);
@@ -112,7 +111,7 @@ export async function videoCommand(argv) {
     });
     if (!positionals[0]) throw new Error('jobId required');
     const bytes = await api('GET', `/videos/${encodeURIComponent(positionals[0])}/content`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       binary: true
     });
     const out = values.out || `${positionals[0]}.mp4`;

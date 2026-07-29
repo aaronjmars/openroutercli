@@ -1,5 +1,4 @@
-import { stdin } from 'node:process';
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, readStdinIfPiped } from '../args.js';
 import { api } from '../api.js';
 import { writeBinaryOutput } from '../output.js';
 
@@ -15,13 +14,6 @@ Options:
   -o, --out <file>     Output audio file (default: out.mp3, or stdout if -)
       --provider <json>
 `;
-
-async function readStdinIfPiped() {
-  if (stdin.isTTY) return null;
-  let data = '';
-  for await (const chunk of stdin) data += chunk;
-  return data.trim() || null;
-}
 
 export async function speechCommand(argv) {
   const { values, positionals } = parseArgs(argv, {

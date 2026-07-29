@@ -1,6 +1,6 @@
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, shouldStream } from '../args.js';
 import { api, sseStream } from '../api.js';
 import { c, info, isJsonMode, out, outln, printJSON } from '../output.js';
 
@@ -234,12 +234,7 @@ export async function chatCommand(argv) {
 
   const body = await buildBody(values, prompt);
 
-  // Streaming default: TTY and not --raw and not --json globally
-  const shouldStream =
-    values.stream ||
-    (!values['no-stream'] && !values.raw && !isJsonMode() && stdout.isTTY);
-
-  if (!shouldStream) {
+  if (!shouldStream(values)) {
     const data = await api('POST', '/chat/completions', { auth, body });
     if (isJsonMode() || values.raw) {
       printJSON(data);

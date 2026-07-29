@@ -1,5 +1,4 @@
-import { stdin } from 'node:process';
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, readStdinIfPiped, shouldStream } from '../args.js';
 import { api, sseStream } from '../api.js';
 import { isJsonMode, out, outln, printJSON } from '../output.js';
 
@@ -36,11 +35,13 @@ Options:
       --body <json|@file>  Provide a fully-formed body (overrides flags)
 `;
 
-async function readStdinIfPiped() {
-  if (stdin.isTTY) return null;
-  let data = '';
-  for await (const chunk of stdin) data += chunk;
-  return data.trim() || null;
+async function resolvePrompt(values, positionals) {
+  if (!values.model) throw new Error('--model is required');
+  let prompt = positionals.join(' ').trim();
+  const piped = await readStdinIfPiped();
+  if (piped) prompt = prompt ? `${prompt}\n\n${piped}` : piped;
+  if (!prompt) throw new Error('No prompt.');
+  return prompt;
 }
 
 async function loadBody(value) {
@@ -70,11 +71,7 @@ export async function messagesCommand(argv) {
 
   let body = await loadBody(values.body);
   if (!body) {
-    if (!values.model) throw new Error('--model is required');
-    let prompt = positionals.join(' ').trim();
-    const piped = await readStdinIfPiped();
-    if (piped) prompt = prompt ? `${prompt}\n\n${piped}` : piped;
-    if (!prompt) throw new Error('No prompt.');
+    const prompt = await resolvePrompt(values, positionals);
     body = {
       model: values.model,
       max_tokens: Number(values['max-tokens'] || 1024),
@@ -84,11 +81,7 @@ export async function messagesCommand(argv) {
     if (values.temperature) body.temperature = Number(values.temperature);
   }
 
-  const shouldStream =
-    values.stream ||
-    (!values['no-stream'] && !values.raw && !isJsonMode() && process.stdout.isTTY);
-
-  if (shouldStream) {
+  if (shouldStream(values)) {
     body.stream = true;
     const res = await api('POST', '/messages', {
       auth: authFromValues(values),
@@ -140,11 +133,7 @@ export async function responsesCommand(argv) {
 
   let body = await loadBody(values.body);
   if (!body) {
-    if (!values.model) throw new Error('--model is required');
-    let prompt = positionals.join(' ').trim();
-    const piped = await readStdinIfPiped();
-    if (piped) prompt = prompt ? `${prompt}\n\n${piped}` : piped;
-    if (!prompt) throw new Error('No prompt.');
+    const prompt = await resolvePrompt(values, positionals);
     body = { model: values.model, input: prompt };
     if (values.instructions) body.instructions = values.instructions;
     if (values['max-tokens'] != null) body.max_output_tokens = Number(values['max-tokens']);
@@ -154,11 +143,7 @@ export async function responsesCommand(argv) {
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
   }
 
-  const shouldStream =
-    values.stream ||
-    (!values['no-stream'] && !values.raw && !isJsonMode() && process.stdout.isTTY);
-
-  if (shouldStream) {
+  if (shouldStream(values)) {
     body.stream = true;
     const res = await api('POST', '/responses', {
       auth: authFromValues(values),

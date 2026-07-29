@@ -49,13 +49,11 @@ export async function workspacesCommand(argv) {
     return sub ? 0 : 1;
   }
 
-  const auth = (v) => authFromValues(v);
-
   if (sub === 'list') {
     const { values } = parseArgs(rest, PAGINATION_OPTIONS);
     const query = paginationQuery(values);
     const data = await api('GET', '/workspaces', {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       query
     });
@@ -75,7 +73,7 @@ export async function workspacesCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (!positionals[0]) throw new Error('id|slug required');
     const data = await api('GET', `/workspaces/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data);
@@ -88,7 +86,7 @@ export async function workspacesCommand(argv) {
     if (!name) throw new Error('name required');
     const body = { name, ...buildBody(values) };
     const data = await api('POST', '/workspaces', {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body
     });
@@ -102,7 +100,7 @@ export async function workspacesCommand(argv) {
     const body = buildBody(values);
     if (values.name) body.name = values.name;
     const data = await api('PATCH', `/workspaces/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body
     });
@@ -114,7 +112,7 @@ export async function workspacesCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (!positionals[0]) throw new Error('id|slug required');
     const data = await api('DELETE', `/workspaces/${encodeURIComponent(positionals[0])}`, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true
     });
     printResult(data, () => outln('deleted'));
@@ -130,7 +128,7 @@ export async function workspacesCommand(argv) {
       ? `/workspaces/${encodeURIComponent(id)}/members/add`
       : `/workspaces/${encodeURIComponent(id)}/members/remove`;
     const data = await api('POST', path, {
-      auth: auth(values),
+      auth: authFromValues(values),
       requiresManagement: true,
       body: { user_ids: userIds }
     });

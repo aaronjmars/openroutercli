@@ -1,4 +1,6 @@
 import { parseArgs as nodeParseArgs } from 'node:util';
+import { stdin } from 'node:process';
+import { isJsonMode } from './output.js';
 
 const GLOBAL_OPTIONS = {
   key: { type: 'string', short: 'k' },
@@ -51,4 +53,18 @@ export function authFromValues(values) {
   if (values.referer) out.referer = values.referer;
   if (values.title) out.title = values.title;
   return out;
+}
+
+export async function readStdinIfPiped() {
+  if (stdin.isTTY) return null;
+  let data = '';
+  for await (const chunk of stdin) data += chunk;
+  return data.trim() || null;
+}
+
+export function shouldStream(values) {
+  return (
+    values.stream ||
+    (!values['no-stream'] && !values.raw && !isJsonMode() && process.stdout.isTTY)
+  );
 }
