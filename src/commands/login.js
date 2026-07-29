@@ -3,7 +3,7 @@ import crypto from 'node:crypto';
 import { spawn } from 'node:child_process';
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { parseArgs } from '../args.js';
+import { parseArgs, numberOption } from '../args.js';
 import {
   loadConfig,
   saveConfig,
@@ -237,7 +237,7 @@ export async function loginCommand(argv) {
   }
 
   // Interactive: try OAuth, but offer paste fallback if user prefers
-  const port = values.port ? Number(values.port) : 0;
+  const port = numberOption(values.port, '--port') ?? 0;
   let result;
   try {
     result = await pkceFlow({

@@ -1,5 +1,5 @@
 import { stdin } from 'node:process';
-import { parseArgs, authFromValues } from '../args.js';
+import { parseArgs, authFromValues, numberOption } from '../args.js';
 import { api } from '../api.js';
 import { c, outln, printResult } from '../output.js';
 
@@ -54,7 +54,7 @@ export async function rerankCommand(argv) {
     query: values.query,
     documents: docs
   };
-  if (values['top-n']) body.top_n = Number(values['top-n']);
+  if (values['top-n']) body.top_n = numberOption(values['top-n'], '--top-n');
   if (values.provider) body.provider = JSON.parse(values.provider);
 
   const data = await api('POST', '/rerank', {

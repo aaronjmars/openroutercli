@@ -1,6 +1,6 @@
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
-import { parseArgs, authFromValues, shouldStream } from '../args.js';
+import { parseArgs, authFromValues, numberOption, shouldStream } from '../args.js';
 import { api, sseStream } from '../api.js';
 import { c, info, isJsonMode, out, outln, printJSON } from '../output.js';
 
@@ -85,18 +85,25 @@ async function imageToContent(value) {
   };
 }
 
+const NUMERIC_SAMPLING = {
+  temperature: 'temperature',
+  'top-p': 'top_p',
+  'top-k': 'top_k',
+  'max-tokens': 'max_tokens',
+  seed: 'seed',
+  'frequency-penalty': 'frequency_penalty',
+  'presence-penalty': 'presence_penalty',
+  'repetition-penalty': 'repetition_penalty',
+  'min-p': 'min_p'
+};
+
 function applySamplingOptions(body, values) {
   if (values.models) body.models = values.models.split(',').map((s) => s.trim());
-  if (values.temperature != null) body.temperature = Number(values.temperature);
-  if (values['top-p'] != null) body.top_p = Number(values['top-p']);
-  if (values['top-k'] != null) body.top_k = Number(values['top-k']);
-  if (values['max-tokens'] != null) body.max_tokens = Number(values['max-tokens']);
-  if (values.seed != null) body.seed = Number(values.seed);
+  for (const [flag, field] of Object.entries(NUMERIC_SAMPLING)) {
+    const n = numberOption(values[flag], `--${flag}`);
+    if (n !== undefined) body[field] = n;
+  }
   if (values.stop) body.stop = values.stop.split(',');
-  if (values['frequency-penalty'] != null) body.frequency_penalty = Number(values['frequency-penalty']);
-  if (values['presence-penalty'] != null) body.presence_penalty = Number(values['presence-penalty']);
-  if (values['repetition-penalty'] != null) body.repetition_penalty = Number(values['repetition-penalty']);
-  if (values['min-p'] != null) body.min_p = Number(values['min-p']);
   if (values.reasoning) body.reasoning = { effort: values.reasoning };
 }
 

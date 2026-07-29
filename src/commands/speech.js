@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues, readStdinIfPiped } from '../args.js';
+import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from '../args.js';
 import { api } from '../api.js';
 import { writeBinaryOutput } from '../output.js';
 
@@ -38,7 +38,7 @@ export async function speechCommand(argv) {
   const body = { model: values.model, input: text };
   if (values.voice) body.voice = values.voice;
   if (values.format) body.response_format = values.format;
-  if (values.speed) body.speed = Number(values.speed);
+  if (values.speed) body.speed = numberOption(values.speed, '--speed');
   if (values.provider) body.provider = JSON.parse(values.provider);
 
   const bytes = await api('POST', '/audio/speech', {

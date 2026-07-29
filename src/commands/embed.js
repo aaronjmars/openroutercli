@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues, readStdinIfPiped } from '../args.js';
+import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from '../args.js';
 import { api } from '../api.js';
 import { outln, pricePerMillion, printResult, table } from '../output.js';
 
@@ -62,7 +62,7 @@ export async function embedCommand(argv) {
     input: inputs.length === 1 ? inputs[0] : inputs
   };
   if (values['input-type']) body.input_type = values['input-type'];
-  if (values.dimensions) body.dimensions = Number(values.dimensions);
+  if (values.dimensions) body.dimensions = numberOption(values.dimensions, '--dimensions');
   if (values.encoding) body.encoding_format = values.encoding;
   if (values.provider) body.provider = JSON.parse(values.provider);
 

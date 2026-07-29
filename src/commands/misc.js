@@ -1,4 +1,10 @@
-import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery } from '../args.js';
+import {
+  parseArgs,
+  authFromValues,
+  numberOption,
+  PAGINATION_OPTIONS,
+  paginationQuery
+} from '../args.js';
 import { api } from '../api.js';
 import { printResult, table } from '../output.js';
 
@@ -87,7 +93,7 @@ export async function authCodeCommand(argv) {
   if (values['code-challenge-method']) body.code_challenge_method = values['code-challenge-method'];
   if (values['expires-at']) body.expires_at = values['expires-at'];
   if (values['key-label']) body.key_label = values['key-label'];
-  if (values.limit) body.limit = Number(values.limit);
+  if (values.limit) body.limit = numberOption(values.limit, '--limit');
   if (values['usage-limit-type']) body.usage_limit_type = values['usage-limit-type'];
   const data = await api('POST', '/auth/keys/code', {
     auth: authFromValues(values),

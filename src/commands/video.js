@@ -56,7 +56,7 @@ export async function videoCommand(argv) {
     const prompt = values.prompt || positionals.join(' ').trim();
     if (!prompt) throw new Error('Prompt is required');
     const body = { model: values.model, prompt };
-    if (values.duration) body.duration = Number(values.duration);
+    if (values.duration) body.duration = numberOption(values.duration, '--duration');
     if (values.aspect) body.aspect_ratio = values.aspect;
     if (values.provider) body.provider = JSON.parse(values.provider);
     if (values.extra) Object.assign(body, JSON.parse(values.extra));

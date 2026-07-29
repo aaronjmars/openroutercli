@@ -2,6 +2,9 @@ import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
 import { c, isJsonMode, outln, pricePerMillion, printResult, table } from '../output.js';
 
+const ENDPOINT_SORT_FIELDS = ['throughput', 'latency', 'prompt', 'completion', 'uptime', 'context'];
+const MODEL_SORT_FIELDS = ['id', 'name', 'context', 'prompt', 'completion'];
+
 const PRICE_COLUMN = {
   label: 'in/out $/M',
   value: (x) => {
@@ -184,6 +187,11 @@ export async function modelsCommand(argv) {
       );
       return values.help ? 0 : 1;
     }
+    if (values.sort && !ENDPOINT_SORT_FIELDS.includes(values.sort)) {
+      throw new Error(
+        `Unknown --sort field "${values.sort}". Expected: ${ENDPOINT_SORT_FIELDS.join(' | ')}`
+      );
+    }
     const target = positionals[0];
     const slash = target.indexOf('/');
     if (slash === -1) throw new Error('Expected <author>/<slug>');
@@ -207,7 +215,6 @@ export async function modelsCommand(argv) {
           case 'completion': return Number(p.completion ?? Infinity);
           case 'uptime': return -(e.uptime_last_30m ?? -Infinity);
           case 'context': return -(e.context_length ?? -Infinity);
-          default: return 0;
         }
       };
       eps = [...eps].sort((a, b) => {
@@ -318,6 +325,11 @@ export async function modelsCommand(argv) {
 
   if (values.sort) {
     const key = values.sort;
+    if (!MODEL_SORT_FIELDS.includes(key)) {
+      throw new Error(
+        `Unknown --sort field "${key}". Expected: ${MODEL_SORT_FIELDS.join(' | ')}`
+      );
+    }
     const get = (m) => {
       switch (key) {
         case 'id': return m.id || '';
@@ -325,7 +337,6 @@ export async function modelsCommand(argv) {
         case 'context': return -(m.context_length || 0);
         case 'prompt': return Number(m.pricing?.prompt ?? Infinity);
         case 'completion': return Number(m.pricing?.completion ?? Infinity);
-        default: return 0;
       }
     };
     rows = [...rows].sort((a, b) => {

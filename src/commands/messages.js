@@ -1,4 +1,10 @@
-import { parseArgs, authFromValues, readStdinIfPiped, shouldStream } from '../args.js';
+import {
+  parseArgs,
+  authFromValues,
+  numberOption,
+  readStdinIfPiped,
+  shouldStream
+} from '../args.js';
 import { api, sseStream } from '../api.js';
 import { isJsonMode, out, outln, printJSON } from '../output.js';
 
@@ -44,6 +50,13 @@ async function resolvePrompt(values, positionals) {
   return prompt;
 }
 
+function applyNumeric(body, values, map) {
+  for (const [flag, field] of Object.entries(map)) {
+    const n = numberOption(values[flag], `--${flag}`);
+    if (n !== undefined) body[field] = n;
+  }
+}
+
 async function loadBody(value) {
   if (!value) return null;
   if (value.startsWith('@')) {
@@ -74,11 +87,11 @@ export async function messagesCommand(argv) {
     const prompt = await resolvePrompt(values, positionals);
     body = {
       model: values.model,
-      max_tokens: Number(values['max-tokens'] || 1024),
+      max_tokens: numberOption(values['max-tokens'], '--max-tokens') ?? 1024,
       messages: [{ role: 'user', content: prompt }]
     };
     if (values.system) body.system = values.system;
-    if (values.temperature) body.temperature = Number(values.temperature);
+    applyNumeric(body, values, { temperature: 'temperature' });
   }
 
   if (shouldStream(values)) {
@@ -136,10 +149,12 @@ export async function responsesCommand(argv) {
     const prompt = await resolvePrompt(values, positionals);
     body = { model: values.model, input: prompt };
     if (values.instructions) body.instructions = values.instructions;
-    if (values['max-tokens'] != null) body.max_output_tokens = Number(values['max-tokens']);
-    if (values.temperature != null) body.temperature = Number(values.temperature);
-    if (values['top-p'] != null) body.top_p = Number(values['top-p']);
-    if (values.seed != null) body.seed = Number(values.seed);
+    applyNumeric(body, values, {
+      'max-tokens': 'max_output_tokens',
+      temperature: 'temperature',
+      'top-p': 'top_p',
+      seed: 'seed'
+    });
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
   }
 
