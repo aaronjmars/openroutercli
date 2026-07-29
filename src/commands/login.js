@@ -57,13 +57,11 @@ function openBrowser(url) {
       ? 'cmd'
       : 'xdg-open';
   const args = process.platform === 'win32' ? ['/c', 'start', '""', url] : [url];
-  try {
-    const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
-    child.unref();
-    return true;
-  } catch {
-    return false;
-  }
+  const child = spawn(cmd, args, { detached: true, stdio: 'ignore' });
+  // Best effort: the URL is printed either way, and a missing launcher arrives
+  // as an async 'error' event that would otherwise crash the process.
+  child.on('error', () => {});
+  child.unref();
 }
 
 async function readFromStdin() {
@@ -244,7 +242,8 @@ export async function loginCommand(argv) {
     });
   } catch (err) {
     if (process.env.OPENROUTER_DEBUG) info(String(err.stack || err));
-    info('OAuth flow failed; falling back to manual key entry.');
+    process.stderr.write(`OAuth flow failed: ${err.message}\n`);
+    info('Falling back to manual key entry.');
     const key = await promptKey();
     if (!key) throw new Error('No API key provided.');
     await saveKey(key);

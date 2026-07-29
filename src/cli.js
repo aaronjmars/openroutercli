@@ -19,14 +19,8 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 
-const VERSION = (() => {
-  try {
-    const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
-    return JSON.parse(readFileSync(pkgPath, 'utf8')).version;
-  } catch {
-    return 'unknown';
-  }
-})();
+const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+const VERSION = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
 
 const COMMANDS = {
   login: loginCommand,
@@ -167,7 +161,7 @@ export async function run(argv) {
   if (!handler) {
     process.stderr.write(`Unknown command: ${cmd}\n\n`);
     process.stdout.write(HELP);
-    process.exit(1);
+    return safeExit(1);
   }
   const code = await handler(rest);
   if (typeof code === 'number') await safeExit(code);

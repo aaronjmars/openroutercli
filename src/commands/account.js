@@ -59,30 +59,36 @@ export async function whoamiCommand(argv) {
 
   // If --key is supplied, query just that key.
   if (authOpts.key) {
-    const data = await fetchKey(authOpts);
+    const data = await api('GET', '/key', { auth: authOpts });
     printResult(data, () => renderKey('API key (--key override)', data));
     return 0;
   }
 
   if (values.management) {
-    const data = resolved.hasManagementKey ? await fetchKey(authOpts, true) : null;
+    const data = resolved.hasManagementKey
+      ? await api('GET', '/key', { auth: authOpts, requiresManagement: true })
+      : null;
     if (isJsonMode()) printJSON({ management: data });
     else renderKey('Management key', data);
     return 0;
   }
 
-  // Both
+  // Probing both slots: one slot failing is normal (a user key is rejected by
+  // the management-scoped probe and vice versa), so report per slot and only
+  // fail when every configured key errored.
   const userData = resolved.hasUserKey ? await fetchKey(authOpts, false) : null;
   const mgmtData = resolved.hasManagementKey ? await fetchKey(authOpts, true) : null;
+  const probed = [userData, mgmtData].filter(Boolean);
+  const code = probed.length && probed.every((d) => d.error) ? 2 : 0;
 
   if (isJsonMode()) {
     printJSON({ user: userData, management: mgmtData });
-    return 0;
+    return code;
   }
   renderKey('User key', userData);
   outln('');
   renderKey('Management key', mgmtData);
-  return 0;
+  return code;
 }
 
 export async function creditsCommand(argv) {
