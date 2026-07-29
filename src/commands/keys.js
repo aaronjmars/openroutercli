@@ -97,7 +97,7 @@ export async function keysCommand(argv) {
     printResult(data, () => {
       const k = data.key || (data.data && data.data.key);
       const meta = data.data || data;
-      outln(c.bold('key (save this — shown only once):'));
+      outln(c.bold('key (save this - shown only once):'));
       outln('  ' + (k || '(see JSON)'));
       outln(c.dim(JSON.stringify(meta, null, 2)));
     });

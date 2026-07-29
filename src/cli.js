@@ -49,7 +49,7 @@ const COMMANDS = {
   request: requestCommand
 };
 
-const HELP = `openrouter — CLI for the OpenRouter API
+const HELP = `openrouter - CLI for the OpenRouter API
 
 Usage:
   openrouter <command> [options]
@@ -121,7 +121,8 @@ Version: ${VERSION}
 `;
 
 function preParseGlobals(argv) {
-  // Pull global flags out of any position so they work before or after the subcommand.
+  // --json/--quiet/--version work in any position; the rest are merged
+  // per-command in args.js.
   const out = [];
   let json = false;
   let quiet = false;

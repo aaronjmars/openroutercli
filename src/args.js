@@ -23,7 +23,7 @@ export function parseArgs(argv, options = {}) {
 }
 
 // parseArgs yields strings; a bare Number() turns a typo into NaN, which
-// JSON.stringify serializes as null -- an API request that silently means
+// JSON.stringify serializes as null: an API request that silently means
 // something else. Fail on the CLI instead.
 export function numberOption(value, flag) {
   if (value === undefined) return undefined;

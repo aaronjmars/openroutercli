@@ -124,7 +124,8 @@ function renderModelDetail(m) {
 }
 
 export async function modelsCommand(argv) {
-  // Subcommand: show / endpoints / count / list
+  // A leading non-flag token is the subcommand; otherwise default to list
+  // and keep argv intact so the list branch still sees its flags.
   const sub = argv[0] && !argv[0].startsWith('-') ? argv[0] : 'list';
   const rest = sub === argv[0] ? argv.slice(1) : argv;
 
@@ -287,7 +288,6 @@ export async function modelsCommand(argv) {
     return 0;
   }
 
-  // list
   const { values } = parseArgs(rest, {
     category: { type: 'string' },
     supported: { type: 'string' },

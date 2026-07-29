@@ -54,7 +54,7 @@ async function loadJsonOrFile(value) {
     return JSON.parse(text);
   }
   if (value.startsWith('{') || value.startsWith('[')) return JSON.parse(value);
-  // otherwise treat as a path
+  // Bare value: try it as a file path first, then as inline JSON.
   try {
     const { readFile } = await import('node:fs/promises');
     const text = await readFile(value, 'utf8');
@@ -178,7 +178,6 @@ async function streamResponse(body, auth) {
       }
     }
     if (delta.reasoning) {
-      // reasoning trace; show in dim if TTY
       if (process.stdout.isTTY) out(c.dim(delta.reasoning));
     }
     if (delta.tool_calls) {
@@ -337,5 +336,4 @@ async function repl(values, auth) {
   }
 }
 
-// Alias used by `complete`
 export const completeCommand = chatCommand;

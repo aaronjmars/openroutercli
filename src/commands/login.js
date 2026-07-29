@@ -25,7 +25,7 @@ Two key types are supported:
                               subcommands, \`activity\`). Must be created in
                               the OpenRouter dashboard at
                               ${PROVISIONING_KEYS_URL}
-                              — they cannot be obtained via OAuth.
+                              They cannot be obtained via OAuth.
 
 You can store one of each. The CLI picks the right one automatically per
 command. Both can also be supplied via env vars (see below).
@@ -33,7 +33,7 @@ command. Both can also be supplied via env vars (see below).
 Options:
   -k, --key <key>      Save an existing API key (sk-or-...). Skips OAuth.
       --management     Save the key into the management slot (instead of
-                       the user-key slot). Implies manual entry — pass with
+                       the user-key slot). Implies manual entry: pass with
                        --key, --stdin, or via the interactive prompt.
       --no-browser     Don't auto-open the browser; just print the auth URL.
       --port <port>    Local port for the OAuth callback (default: random).
@@ -206,7 +206,7 @@ export async function loginCommand(argv) {
   const baseUrl = values['base-url'] || DEFAULT_BASE_URL;
   const authUrl = values['auth-url'] || DEFAULT_AUTH_URL;
 
-  // Management-key path: never OAuth — always paste/stdin/--key.
+  // Management-key path: never OAuth, always paste/stdin/--key.
   if (values.management) {
     let key = values.key;
     if (!key && values.stdin) key = await readFromStdin();
@@ -222,7 +222,6 @@ export async function loginCommand(argv) {
     return 0;
   }
 
-  // Manual user-key path
   if (values.key || values.stdin) {
     const key = values.key || (await readFromStdin());
     if (!key || !key.startsWith('sk-or-')) {
@@ -236,7 +235,7 @@ export async function loginCommand(argv) {
     return 0;
   }
 
-  // Interactive: try OAuth, but offer paste fallback if user prefers
+  // Interactive: OAuth PKCE, falling back to manual paste only if it fails.
   const port = numberOption(values.port, '--port') ?? 0;
   let result;
   try {
