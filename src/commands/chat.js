@@ -38,8 +38,8 @@ Options:
       --raw                Print full JSON response (non-streaming; the REPL
                            always streams, so it is ignored there)
       --usage              Print usage info to stderr after completion
-      --interactive, -i    Force interactive REPL. --image applies to the
-                           opening turn only.
+      --interactive, -i    Force interactive REPL (needs a terminal).
+                           --image applies to the opening turn only.
   -h, --help
 `;
 
@@ -246,6 +246,16 @@ export async function chatCommand(argv) {
   }
 
   const auth = authFromValues(values);
+
+  // Must precede readStdinIfPiped: that call drains stdin, which would leave
+  // the REPL's readline with an exhausted stream and no way to report why.
+  if (values.interactive && !stdin.isTTY) {
+    throw new Error(
+      '--interactive needs a terminal on stdin. To send piped input as a ' +
+        'single prompt, drop -i: echo "hi" | openrouter chat'
+    );
+  }
+
   const piped = await readStdinIfPiped();
   let prompt = positionals.join(' ').trim();
   if (piped) prompt = prompt ? `${prompt}\n\n${piped}` : piped;
