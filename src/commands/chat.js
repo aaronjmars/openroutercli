@@ -4,13 +4,15 @@ import { parseArgs, authFromValues, shouldStream } from '../args.js';
 import { api, sseStream } from '../api.js';
 import { c, info, isJsonMode, out, outln, printJSON } from '../output.js';
 
+const DEFAULT_MODEL = 'openrouter/auto';
+
 const HELP = `Usage: openrouter chat [prompt...] [options]
 
 Send a chat completion. With no prompt and a TTY, starts an interactive REPL.
 With no prompt and stdin piped, reads the prompt from stdin.
 
 Options:
-  -m, --model <id>         Model id (default: openrouter/auto)
+  -m, --model <id>         Model id (default: ${DEFAULT_MODEL})
       --models <csv>       Fallback list (comma-separated)
   -s, --system <text>      System message
       --stream             Stream tokens (default when TTY)
@@ -115,7 +117,7 @@ async function buildBody(values, prompt) {
   messages.push({ role: 'user', content: userContent });
 
   const body = {
-    model: values.model || 'openrouter/auto',
+    model: values.model || DEFAULT_MODEL,
     messages
   };
   applySamplingOptions(body, values);
@@ -269,7 +271,7 @@ async function repl(values, auth) {
   const history = [];
   if (values.system) history.push({ role: 'system', content: values.system });
   outln(c.dim('OpenRouter chat. /exit to quit, /reset to clear history, /model <id> to switch.'));
-  let model = values.model || 'openrouter/auto';
+  let model = values.model || DEFAULT_MODEL;
   outln(c.dim(`model: ${model}`));
   try {
     while (true) {

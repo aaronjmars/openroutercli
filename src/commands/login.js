@@ -4,7 +4,13 @@ import { spawn } from 'node:child_process';
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { parseArgs } from '../args.js';
-import { loadConfig, saveConfig, DEFAULT_AUTH_URL, DEFAULT_BASE_URL } from '../config.js';
+import {
+  loadConfig,
+  saveConfig,
+  DEFAULT_AUTH_URL,
+  DEFAULT_BASE_URL,
+  PROVISIONING_KEYS_URL
+} from '../config.js';
 import { api } from '../api.js';
 import { c, info, isJsonMode, outln, printJSON } from '../output.js';
 
@@ -18,7 +24,7 @@ Two key types are supported:
   - Management key:           used for account-wide operations (\`keys\`
                               subcommands, \`activity\`). Must be created in
                               the OpenRouter dashboard at
-                              https://openrouter.ai/settings/provisioning-keys
+                              ${PROVISIONING_KEYS_URL}
                               — they cannot be obtained via OAuth.
 
 You can store one of each. The CLI picks the right one automatically per
@@ -98,7 +104,7 @@ async function promptManagementKey() {
   const rl = readline.createInterface({ input: stdin, output: stdout });
   try {
     const answer = await rl.question(
-      'Paste your OpenRouter management key (sk-or-v1-...). Create one at\n  https://openrouter.ai/settings/provisioning-keys\n› '
+      `Paste your OpenRouter management key (sk-or-v1-...). Create one at\n  ${PROVISIONING_KEYS_URL}\n› `
     );
     return answer.trim();
   } finally {

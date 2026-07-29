@@ -2,6 +2,14 @@ import { parseArgs, authFromValues } from '../args.js';
 import { api } from '../api.js';
 import { c, isJsonMode, outln, pricePerMillion, printResult, table } from '../output.js';
 
+const PRICE_COLUMN = {
+  label: 'in/out $/M',
+  value: (x) => {
+    const p = x.pricing || {};
+    return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
+  }
+};
+
 const HELP = `Usage: openrouter models [subcommand] [options]
 
 Subcommands:
@@ -28,13 +36,7 @@ function listFormatter(data) {
       label: 'context',
       value: (m) => (m.context_length || '').toLocaleString?.() ?? m.context_length
     },
-    {
-      label: 'in/out $/M',
-      value: (m) => {
-        const p = m.pricing || {};
-        return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
-      }
-    },
+    PRICE_COLUMN,
     { label: 'name', value: (m) => m.name || '' }
   ]);
   if (rows.length > 200) outln(c.dim(`... ${rows.length - 200} more (use --json for the full list)`));
@@ -222,13 +224,7 @@ export async function modelsCommand(argv) {
         { label: 'provider', value: (e) => e.provider_name || e.name || '' },
         { label: 'context', value: (e) => e.context_length ?? '' },
         { label: 'max_out', value: (e) => e.max_completion_tokens ?? '' },
-        {
-          label: 'in/out $/M',
-          value: (e) => {
-            const p = e.pricing || {};
-            return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
-          }
-        },
+        PRICE_COLUMN,
         {
           label: 'tput p50',
           value: (e) =>

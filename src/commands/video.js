@@ -2,6 +2,9 @@ import { parseArgs, authFromValues, numberOption } from '../args.js';
 import { api } from '../api.js';
 import { c, info, outln, printResult, writeBinaryOutput } from '../output.js';
 
+const FAILED_STATUSES = ['failed', 'cancelled', 'error'];
+const TERMINAL_STATUSES = ['succeeded', 'completed', ...FAILED_STATUSES];
+
 const HELP = `Usage: openrouter video <subcommand> [options]
 
 Subcommands:
@@ -94,9 +97,9 @@ export async function videoCommand(argv) {
       });
       const status = data.status || (data.data && data.data.status);
       info(`status: ${status}`);
-      if (['succeeded', 'completed', 'failed', 'cancelled', 'error'].includes(status)) {
+      if (TERMINAL_STATUSES.includes(status)) {
         printResult(data);
-        return ['failed', 'cancelled', 'error'].includes(status) ? 4 : 0;
+        return FAILED_STATUSES.includes(status) ? 4 : 0;
       }
       if (Date.now() - start > timeout) {
         throw new Error('timeout waiting for job');

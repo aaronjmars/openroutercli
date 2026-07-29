@@ -8,6 +8,8 @@ const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
 
 export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
 export const DEFAULT_AUTH_URL = 'https://openrouter.ai/auth';
+export const PROVISIONING_KEYS_URL =
+  'https://openrouter.ai/settings/provisioning-keys';
 
 export async function loadConfig() {
   try {
