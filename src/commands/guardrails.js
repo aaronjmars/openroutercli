@@ -7,7 +7,7 @@ const HELP = `Usage: openrouter guardrails <subcommand> [options]
 Manage guardrails (requires a management key).
 
 Subcommands:
-  list                                List guardrails
+  list [--offset <n>] [--limit <n>]   List guardrails
   get <id>                            Get one
   create <name> [options]             Create
   update <id> [options]               Update
@@ -21,6 +21,7 @@ Subcommands:
   member-assignments <id>             List member assignments for a guardrail
 
 create / update options:
+  --name <name>             (update only)
   --description <text>
   --limit-usd <n>
   --reset-interval <p>      daily | weekly | monthly | null
@@ -72,6 +73,11 @@ export async function guardrailsCommand(argv) {
   if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
+  }
+
+  if (rest.includes('-h') || rest.includes('--help')) {
+    process.stdout.write(HELP);
+    return 0;
   }
 
   if (sub === 'list') {
@@ -157,7 +163,12 @@ export async function guardrailsCommand(argv) {
       keys: { type: 'boolean' },
       members: { type: 'boolean' }
     });
-    const path = values.members ? '/guardrails/assignments/members' : '/guardrails/assignments/keys';
+    if (values.keys && values.members) {
+      throw new Error('Pass only one of --keys or --members.');
+    }
+    const path = values.members
+      ? '/guardrails/assignments/members'
+      : '/guardrails/assignments/keys';
     const data = await api('GET', path, {
       auth: authFromValues(values),
       requiresManagement: true

@@ -5,7 +5,7 @@ import {
   readStdinIfPiped,
   shouldStream
 } from '../args.js';
-import { api, sseStream } from '../api.js';
+import { api, assertNoStreamError, sseStream } from '../api.js';
 import { isJsonMode, out, outln, printJSON } from '../output.js';
 
 const HELP = `Usage: openrouter messages [prompt...] [options]
@@ -103,6 +103,7 @@ export async function messagesCommand(argv) {
       headers: { Accept: 'text/event-stream' }
     });
     for await (const evt of sseStream(res)) {
+      assertNoStreamError(evt);
       const t = evt.type;
       if (t === 'content_block_delta' && evt.delta && evt.delta.text) {
         out(evt.delta.text);
@@ -167,6 +168,7 @@ export async function responsesCommand(argv) {
       headers: { Accept: 'text/event-stream' }
     });
     for await (const evt of sseStream(res)) {
+      assertNoStreamError(evt);
       if (evt.type && evt.type.endsWith('output_text.delta') && evt.delta) {
         out(evt.delta);
       }

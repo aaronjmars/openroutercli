@@ -92,6 +92,17 @@ export async function api(method, path, opts = {}) {
   }
 }
 
+// Streaming endpoints report failures as an in-band event rather than a
+// non-2xx status, so nothing above this catches them.
+export function assertNoStreamError(evt) {
+  if (!evt) return;
+  const err = evt.error ?? (evt.type === 'error' ? evt : null);
+  if (!err) return;
+  const message =
+    (typeof err === 'string' ? err : err.message) || JSON.stringify(err);
+  throw new APIError(`stream error: ${message}`);
+}
+
 export async function* sseStream(res) {
   if (!res.body) return;
   const reader = res.body.getReader();

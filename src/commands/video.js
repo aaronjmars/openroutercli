@@ -12,7 +12,11 @@ Subcommands:
   models                          List video models
   get <jobId>                     Get job status
   download <jobId> [-o file]      Download generated video content
-  wait <jobId>                    Poll until the job completes
+  wait <jobId> [options]          Poll until the job completes
+
+wait options:
+      --interval <s>   Seconds between polls (default: 5)
+      --timeout <s>    Give up after this many seconds (default: 600)
 
 create options:
   -m, --model <id>     Video model id (required)
@@ -34,6 +38,11 @@ export async function videoCommand(argv) {
   if (!sub || sub === '-h' || sub === '--help' || sub === 'help') {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
+  }
+
+  if (rest.includes('-h') || rest.includes('--help')) {
+    process.stdout.write(HELP);
+    return 0;
   }
 
   if (sub === 'models') {

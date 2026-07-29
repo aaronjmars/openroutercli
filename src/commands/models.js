@@ -18,8 +18,10 @@ const HELP = `Usage: openrouter models [subcommand] [options]
 Subcommands:
   list                       List all models (default)
   show <id>                  Full detail for a single model (pricing breakdown,
-                             architecture, supported params, top provider)
+                             architecture, supported params, top provider).
+                             Aliases: info, detail
   endpoints <author>/<slug>  List endpoints (provider variants) for a model
+  user                       Models filtered by your workspace preferences
   count                      Get the total model count
 
 Options for list:
@@ -330,13 +332,25 @@ export async function modelsCommand(argv) {
         `Unknown --sort field "${key}". Expected: ${MODEL_SORT_FIELDS.join(' | ')}`
       );
     }
+    // Unparseable or missing values must score to a definite extreme, or the
+    // comparator reports them equal to everything and the sort is a no-op.
+    const num = (x) => {
+      if (x == null || x === '') return null;
+      const n = Number(x);
+      return Number.isFinite(n) ? n : null;
+    };
+    const asc = (x) => num(x) ?? Infinity;
+    const desc = (x) => {
+      const n = num(x);
+      return n === null ? Infinity : -n;
+    };
     const get = (m) => {
       switch (key) {
         case 'id': return m.id || '';
         case 'name': return m.name || '';
-        case 'context': return -(m.context_length || 0);
-        case 'prompt': return Number(m.pricing?.prompt ?? Infinity);
-        case 'completion': return Number(m.pricing?.completion ?? Infinity);
+        case 'context': return desc(m.context_length);
+        case 'prompt': return asc(m.pricing?.prompt);
+        case 'completion': return asc(m.pricing?.completion);
       }
     };
     rows = [...rows].sort((a, b) => {

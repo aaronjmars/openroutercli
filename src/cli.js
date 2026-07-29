@@ -98,15 +98,16 @@ Global options (work with all commands):
       --title <name>     X-Title header (your app name; appears on openrouter.ai)
       --json             Output JSON (also disables streaming, color, and prompts)
   -q, --quiet            Suppress informational stderr messages
+  -V, --version          Print the version
   -h, --help             Show help (use \`openrouter <command> --help\` for command-specific help)
 
 Environment:
-  OPENROUTER_API_KEY         Default user key
+  OPENROUTER_API_KEY         Default user key (alias: OPENROUTER_KEY)
   OPENROUTER_MANAGEMENT_KEY  Default management/provisioning key
   OPENROUTER_BASE_URL        Default base URL
   OPENROUTER_REFERER         Default HTTP-Referer
   OPENROUTER_TITLE           Default X-Title
-  NO_COLOR                   Disable ANSI colors
+  NO_COLOR                   Disable ANSI colors (alias: OPENROUTER_NO_COLOR)
   OPENROUTER_DEBUG=1         Print stack traces on error
 
 Examples:

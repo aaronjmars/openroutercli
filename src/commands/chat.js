@@ -1,10 +1,11 @@
 import readline from 'node:readline/promises';
 import { stdin, stdout } from 'node:process';
 import { parseArgs, authFromValues, numberOption, shouldStream } from '../args.js';
-import { api, sseStream } from '../api.js';
+import { api, assertNoStreamError, sseStream } from '../api.js';
 import { c, info, isJsonMode, out, outln, printJSON } from '../output.js';
 
 const DEFAULT_MODEL = 'openrouter/auto';
+const ERROR_FINISH_REASONS = ['error', 'content_filter'];
 
 const HELP = `Usage: openrouter chat [prompt...] [options]
 
@@ -34,9 +35,11 @@ Options:
       --reasoning <effort> low | medium | high
       --provider <json>    Provider routing options as JSON
       --image <url|path>   Attach an image (repeatable). URL or local file
-      --raw                Print full JSON response (non-streaming)
+      --raw                Print full JSON response (non-streaming; the REPL
+                           always streams, so it is ignored there)
       --usage              Print usage info to stderr after completion
-      --interactive, -i    Force interactive REPL
+      --interactive, -i    Force interactive REPL. --image applies to the
+                           opening turn only.
   -h, --help
 `;
 
@@ -107,26 +110,18 @@ function applySamplingOptions(body, values) {
   if (values.reasoning) body.reasoning = { effort: values.reasoning };
 }
 
-async function buildBody(values, prompt) {
-  const messages = [];
-  if (values.system) messages.push({ role: 'system', content: values.system });
+async function buildUserContent(values, prompt, withImages) {
+  const images = withImages ? values.image || [] : [];
+  if (images.length === 0) return prompt;
+  const parts = [];
+  if (prompt) parts.push({ type: 'text', text: prompt });
+  for (const img of images) parts.push(await imageToContent(img));
+  return parts;
+}
 
-  let userContent;
-  const images = values.image || [];
-  if (images.length > 0) {
-    const parts = [];
-    if (prompt) parts.push({ type: 'text', text: prompt });
-    for (const img of images) parts.push(await imageToContent(img));
-    userContent = parts;
-  } else {
-    userContent = prompt;
-  }
-  messages.push({ role: 'user', content: userContent });
-
-  const body = {
-    model: values.model || DEFAULT_MODEL,
-    messages
-  };
+// Options that apply to the request whichever turn it is, so an interactive
+// session is configured the same way a one-shot run is.
+async function applyRequestOptions(body, values) {
   applySamplingOptions(body, values);
 
   if (values['json-output']) body.response_format = { type: 'json_object' };
@@ -152,7 +147,24 @@ async function buildBody(values, prompt) {
     else body.tool_choice = { type: 'function', function: { name: v } };
   }
   if (values.provider) body.provider = await loadJsonOrFile(values.provider);
+}
+
+async function buildBody(values, prompt) {
+  const messages = [];
+  if (values.system) messages.push({ role: 'system', content: values.system });
+  messages.push({
+    role: 'user',
+    content: await buildUserContent(values, prompt, true)
+  });
+  const body = { model: values.model || DEFAULT_MODEL, messages };
+  await applyRequestOptions(body, values);
   return body;
+}
+
+function printUsage(model, usage) {
+  info(
+    `model=${model || ''} prompt=${usage.prompt_tokens} completion=${usage.completion_tokens} total=${usage.total_tokens}`
+  );
 }
 
 async function streamResponse(body, auth) {
@@ -164,17 +176,25 @@ async function streamResponse(body, auth) {
   });
   let usage = null;
   let model = null;
+  let finishReason = null;
+  let text = '';
   for await (const evt of sseStream(res)) {
+    assertNoStreamError(evt);
     if (evt.usage) usage = evt.usage;
     if (evt.model) model = evt.model;
     const choice = evt.choices && evt.choices[0];
     if (!choice) continue;
     const delta = choice.delta || choice.message;
     if (!delta) continue;
-    if (typeof delta.content === 'string') out(delta.content);
-    else if (Array.isArray(delta.content)) {
+    if (typeof delta.content === 'string') {
+      out(delta.content);
+      text += delta.content;
+    } else if (Array.isArray(delta.content)) {
       for (const part of delta.content) {
-        if (part.type === 'text' && part.text) out(part.text);
+        if (part.type === 'text' && part.text) {
+          out(part.text);
+          text += part.text;
+        }
       }
     }
     if (delta.reasoning) {
@@ -185,9 +205,10 @@ async function streamResponse(body, auth) {
         if (tc.function && tc.function.arguments) out(tc.function.arguments);
       }
     }
+    if (choice.finish_reason) finishReason = choice.finish_reason;
   }
   if (process.stdout.isTTY) out('\n');
-  return { usage, model };
+  return { usage, model, finishReason, text };
 }
 
 export async function chatCommand(argv) {
@@ -254,20 +275,21 @@ export async function chatCommand(argv) {
         for (const part of msg.content)
           if (part.type === 'text') outln(part.text);
       } else outln(JSON.stringify(data));
-      if (values.usage && data.usage) {
-        info(
-          `model=${data.model || ''} prompt=${data.usage.prompt_tokens} completion=${data.usage.completion_tokens} total=${data.usage.total_tokens}`
-        );
-      }
+      if (values.usage && data.usage) printUsage(data.model, data.usage);
+    }
+    const finish = data.choices && data.choices[0] && data.choices[0].finish_reason;
+    if (ERROR_FINISH_REASONS.includes(finish)) {
+      process.stderr.write(`error: generation stopped (${finish})\n`);
+      return 2;
     }
     return 0;
   }
 
   const meta = await streamResponse(body, auth);
-  if (values.usage && meta.usage) {
-    info(
-      `model=${meta.model || ''} prompt=${meta.usage.prompt_tokens} completion=${meta.usage.completion_tokens} total=${meta.usage.total_tokens}`
-    );
+  if (values.usage && meta.usage) printUsage(meta.model, meta.usage);
+  if (ERROR_FINISH_REASONS.includes(meta.finishReason)) {
+    process.stderr.write(`error: generation stopped (${meta.finishReason})\n`);
+    return 2;
   }
   return 0;
 }
@@ -279,6 +301,7 @@ async function repl(values, auth) {
   outln(c.dim('OpenRouter chat. /exit to quit, /reset to clear history, /model <id> to switch.'));
   let model = values.model || DEFAULT_MODEL;
   outln(c.dim(`model: ${model}`));
+  let firstTurn = true;
   try {
     while (true) {
       let line;
@@ -295,6 +318,7 @@ async function repl(values, auth) {
         history.length = 0;
         if (values.system)
           history.push({ role: 'system', content: values.system });
+        firstTurn = true;
         outln(c.dim('(history cleared)'));
         continue;
       }
@@ -303,27 +327,22 @@ async function repl(values, auth) {
         outln(c.dim(`model: ${model}`));
         continue;
       }
-      history.push({ role: 'user', content: trimmed });
-      const body = { model, messages: history, stream: true };
-      applySamplingOptions(body, values);
+      // --image attaches to the opening turn only; resending it every turn
+      // would re-upload the same attachment.
+      history.push({
+        role: 'user',
+        content: await buildUserContent(values, trimmed, firstTurn)
+      });
+      const body = { model, messages: history };
+      await applyRequestOptions(body, values);
       try {
-        const res = await api('POST', '/chat/completions', {
-          auth,
-          body,
-          raw: true,
-          headers: { Accept: 'text/event-stream' }
-        });
-        let assistant = '';
-        for await (const evt of sseStream(res)) {
-          const delta = evt.choices?.[0]?.delta;
-          if (delta?.content) {
-            out(delta.content);
-            assistant += delta.content;
-          }
-          if (delta?.reasoning && process.stdout.isTTY) out(c.dim(delta.reasoning));
+        const meta = await streamResponse(body, auth);
+        history.push({ role: 'assistant', content: meta.text });
+        firstTurn = false;
+        if (values.usage && meta.usage) printUsage(meta.model, meta.usage);
+        if (ERROR_FINISH_REASONS.includes(meta.finishReason)) {
+          outln(c.red(`generation stopped (${meta.finishReason})`));
         }
-        out('\n');
-        history.push({ role: 'assistant', content: assistant });
       } catch (err) {
         outln(c.red(err.message));
         // Drop the orphaned user message so the next turn doesn't send a

@@ -7,7 +7,7 @@ const HELP = `Usage: openrouter workspaces <subcommand> [options]
 Manage workspaces (requires a management key).
 
 Subcommands:
-  list                                  List workspaces
+  list [--offset <n>] [--limit <n>]     List workspaces
   get <id|slug>                         Get one
   create <name> [options]               Create
   update <id|slug> [options]            Update
@@ -16,6 +16,7 @@ Subcommands:
   remove-members <id|slug> <userId>...  Bulk remove members
 
 create / update options:
+  --name <name>                    (update only)
   --slug <slug>
   --description <text>
   --default-text-model <id>
@@ -47,6 +48,11 @@ export async function workspacesCommand(argv) {
   if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
+  }
+
+  if (rest.includes('-h') || rest.includes('--help')) {
+    process.stdout.write(HELP);
+    return 0;
   }
 
   if (sub === 'list') {

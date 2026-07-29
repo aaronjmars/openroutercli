@@ -7,7 +7,11 @@ const HELP = `Usage: openrouter keys <subcommand> [options]
 Manage API keys (requires a provisioning/management key).
 
 Subcommands:
-  list                            List API keys
+  list [options]                  List API keys
+
+list options:
+  --offset <n>           Pagination offset
+  --include-disabled     Include disabled keys
   get <hash>                      Get a single key
   create <name> [options]         Create a key
   update <hash> [options]         Update a key
@@ -34,6 +38,11 @@ export async function keysCommand(argv) {
   if (!sub || sub === '-h' || sub === '--help' || sub === 'help') {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
+  }
+
+  if (rest.includes('-h') || rest.includes('--help')) {
+    process.stdout.write(HELP);
+    return 0;
   }
 
   if (sub === 'list') {

@@ -19,6 +19,10 @@ Options:
 export async function embedCommand(argv) {
   if (argv[0] === 'models') {
     const { values } = parseArgs(argv.slice(1), {});
+    if (values.help) {
+      process.stdout.write(HELP);
+      return 0;
+    }
     const data = await api('GET', '/embeddings/models', {
       auth: authFromValues(values),
       requireAuth: false

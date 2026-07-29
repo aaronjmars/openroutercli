@@ -247,6 +247,9 @@ export async function loginCommand(argv) {
     });
   } catch (err) {
     if (process.env.OPENROUTER_DEBUG) info(String(err.stack || err));
+    // --json is documented as disabling prompts, and a non-TTY has nobody to
+    // answer one.
+    if (isJsonMode() || !stdin.isTTY) throw err;
     process.stderr.write(`OAuth flow failed: ${err.message}\n`);
     info('Falling back to manual key entry.');
     const key = await promptKey();
