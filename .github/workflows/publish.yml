@@ -14,6 +14,8 @@ jobs:
         with:
           node-version: 20
           registry-url: https://registry.npmjs.org
+      # OIDC trusted publishing needs npm >= 11.5
+      - run: npm install -g npm@latest
       - run: npm publish --provenance --access public
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
