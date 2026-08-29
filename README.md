@@ -207,3 +207,7 @@ This is an **unofficial** community project. It is not affiliated with,
 endorsed by, or sponsored by OpenRouter. "OpenRouter" and the OpenRouter
 logo are trademarks of their respective owners; usage here is for
 identification only.
+
+---
+
+Built by [Aaron Elijah Mars](https://aaronjmars.com), founder of Aeon and MiroShark · [@aaronjmars](https://github.com/aaronjmars)
