@@ -1,6 +1,12 @@
-import { parseArgs, authFromValues, PAGINATION_OPTIONS, paginationQuery, numberOption } from '../args.js';
-import { api } from '../api.js';
-import { outln, printResult, table } from '../output.js';
+import {
+  parseArgs,
+  authFromValues,
+  PAGINATION_OPTIONS,
+  paginationQuery,
+  numberOption,
+} from "../args.js";
+import { api } from "../api.js";
+import { outln, printResult, table } from "../output.js";
 
 const HELP = `Usage: openrouter guardrails <subcommand> [options]
 
@@ -35,192 +41,200 @@ create / update options:
 
 function csv(v) {
   if (v == null) return undefined;
-  if (v === '') return null;
-  return v.split(',').map((s) => s.trim()).filter(Boolean);
+  if (v === "") return null;
+  return v
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function buildBody(values) {
   const body = {};
   if (values.description !== undefined) body.description = values.description;
-  if (values['limit-usd'] !== undefined) body.limit_usd = numberOption(values['limit-usd'], '--limit-usd');
-  if (values['reset-interval'] !== undefined) {
-    body.reset_interval = values['reset-interval'] === 'null' ? null : values['reset-interval'];
+  if (values["limit-usd"] !== undefined)
+    body.limit_usd = numberOption(values["limit-usd"], "--limit-usd");
+  if (values["reset-interval"] !== undefined) {
+    body.reset_interval = values["reset-interval"] === "null" ? null : values["reset-interval"];
   }
-  if (values['enforce-zdr']) body.enforce_zdr = true;
-  if (values['no-zdr']) body.enforce_zdr = false;
-  if (values['allowed-models'] !== undefined) body.allowed_models = csv(values['allowed-models']);
-  if (values['ignored-models'] !== undefined) body.ignored_models = csv(values['ignored-models']);
-  if (values['allowed-providers'] !== undefined) body.allowed_providers = csv(values['allowed-providers']);
-  if (values['ignored-providers'] !== undefined) body.ignored_providers = csv(values['ignored-providers']);
+  if (values["enforce-zdr"]) body.enforce_zdr = true;
+  if (values["no-zdr"]) body.enforce_zdr = false;
+  if (values["allowed-models"] !== undefined) body.allowed_models = csv(values["allowed-models"]);
+  if (values["ignored-models"] !== undefined) body.ignored_models = csv(values["ignored-models"]);
+  if (values["allowed-providers"] !== undefined)
+    body.allowed_providers = csv(values["allowed-providers"]);
+  if (values["ignored-providers"] !== undefined)
+    body.ignored_providers = csv(values["ignored-providers"]);
   return body;
 }
 
 const COMMON_FIELDS = {
-  description: { type: 'string' },
-  'limit-usd': { type: 'string' },
-  'reset-interval': { type: 'string' },
-  'enforce-zdr': { type: 'boolean' },
-  'no-zdr': { type: 'boolean' },
-  'allowed-models': { type: 'string' },
-  'ignored-models': { type: 'string' },
-  'allowed-providers': { type: 'string' },
-  'ignored-providers': { type: 'string' }
+  description: { type: "string" },
+  "limit-usd": { type: "string" },
+  "reset-interval": { type: "string" },
+  "enforce-zdr": { type: "boolean" },
+  "no-zdr": { type: "boolean" },
+  "allowed-models": { type: "string" },
+  "ignored-models": { type: "string" },
+  "allowed-providers": { type: "string" },
+  "ignored-providers": { type: "string" },
 };
 
 export async function guardrailsCommand(argv) {
   const sub = argv[0];
   const rest = argv.slice(1);
-  if (!sub || sub === 'help' || sub === '-h' || sub === '--help') {
+  if (!sub || sub === "help" || sub === "-h" || sub === "--help") {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
   }
 
-  if (rest.includes('-h') || rest.includes('--help')) {
+  if (rest.includes("-h") || rest.includes("--help")) {
     process.stdout.write(HELP);
     return 0;
   }
 
-  if (sub === 'list') {
+  if (sub === "list") {
     const { values } = parseArgs(rest, PAGINATION_OPTIONS);
     const query = paginationQuery(values);
-    const data = await api('GET', '/guardrails', {
+    const data = await api("GET", "/guardrails", {
       auth: authFromValues(values),
       requiresManagement: true,
-      query
+      query,
     });
     printResult(data, () => {
       const rows = data.data || [];
       table(rows, [
-        { label: 'id', value: (g) => g.id },
-        { label: 'name', value: (g) => g.name },
-        { label: 'limit_usd', value: (g) => g.limit_usd ?? '' },
-        { label: 'reset', value: (g) => g.reset_interval ?? '' },
-        { label: 'zdr', value: (g) => (g.enforce_zdr ? 'yes' : '') }
+        { label: "id", value: (g) => g.id },
+        { label: "name", value: (g) => g.name },
+        { label: "limit_usd", value: (g) => g.limit_usd ?? "" },
+        { label: "reset", value: (g) => g.reset_interval ?? "" },
+        { label: "zdr", value: (g) => (g.enforce_zdr ? "yes" : "") },
       ]);
     });
     return 0;
   }
 
-  if (sub === 'get') {
+  if (sub === "get") {
     const { values, positionals } = parseArgs(rest, {});
-    if (!positionals[0]) throw new Error('id required');
-    const data = await api('GET', `/guardrails/${encodeURIComponent(positionals[0])}`, {
+    if (!positionals[0]) throw new Error("id required");
+    const data = await api("GET", `/guardrails/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
-      requiresManagement: true
+      requiresManagement: true,
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'create') {
+  if (sub === "create") {
     const { values, positionals } = parseArgs(rest, {
       ...COMMON_FIELDS,
-      workspace: { type: 'string' }
+      workspace: { type: "string" },
     });
     const name = positionals[0];
-    if (!name) throw new Error('name required');
+    if (!name) throw new Error("name required");
     const body = { name, ...buildBody(values) };
     if (values.workspace) body.workspace_id = values.workspace;
-    const data = await api('POST', '/guardrails', {
+    const data = await api("POST", "/guardrails", {
       auth: authFromValues(values),
       requiresManagement: true,
-      body
+      body,
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'update') {
+  if (sub === "update") {
     const { values, positionals } = parseArgs(rest, {
       ...COMMON_FIELDS,
-      name: { type: 'string' }
+      name: { type: "string" },
     });
-    if (!positionals[0]) throw new Error('id required');
+    if (!positionals[0]) throw new Error("id required");
     const body = buildBody(values);
     if (values.name) body.name = values.name;
-    const data = await api('PATCH', `/guardrails/${encodeURIComponent(positionals[0])}`, {
+    const data = await api("PATCH", `/guardrails/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
       requiresManagement: true,
-      body
+      body,
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'delete') {
+  if (sub === "delete") {
     const { values, positionals } = parseArgs(rest, {});
-    if (!positionals[0]) throw new Error('id required');
-    const data = await api('DELETE', `/guardrails/${encodeURIComponent(positionals[0])}`, {
+    if (!positionals[0]) throw new Error("id required");
+    const data = await api("DELETE", `/guardrails/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
-      requiresManagement: true
+      requiresManagement: true,
     });
-    printResult(data, () => outln('deleted'));
+    printResult(data, () => outln("deleted"));
     return 0;
   }
 
-  if (sub === 'assignments') {
+  if (sub === "assignments") {
     const { values } = parseArgs(rest, {
-      keys: { type: 'boolean' },
-      members: { type: 'boolean' }
+      keys: { type: "boolean" },
+      members: { type: "boolean" },
     });
     if (values.keys && values.members) {
-      throw new Error('Pass only one of --keys or --members.');
+      throw new Error("Pass only one of --keys or --members.");
     }
     const path = values.members
-      ? '/guardrails/assignments/members'
-      : '/guardrails/assignments/keys';
-    const data = await api('GET', path, {
+      ? "/guardrails/assignments/members"
+      : "/guardrails/assignments/keys";
+    const data = await api("GET", path, {
       auth: authFromValues(values),
-      requiresManagement: true
+      requiresManagement: true,
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'key-assignments' || sub === 'member-assignments') {
+  if (sub === "key-assignments" || sub === "member-assignments") {
     const { values, positionals } = parseArgs(rest, {});
-    if (!positionals[0]) throw new Error('id required');
+    if (!positionals[0]) throw new Error("id required");
     const path =
-      sub === 'key-assignments'
+      sub === "key-assignments"
         ? `/guardrails/${encodeURIComponent(positionals[0])}/assignments/keys`
         : `/guardrails/${encodeURIComponent(positionals[0])}/assignments/members`;
-    const data = await api('GET', path, {
+    const data = await api("GET", path, {
       auth: authFromValues(values),
-      requiresManagement: true
+      requiresManagement: true,
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'assign-key' || sub === 'unassign-key') {
+  if (sub === "assign-key" || sub === "unassign-key") {
     const { values, positionals } = parseArgs(rest, {});
-    if (positionals.length < 2) throw new Error('Usage: <id> <hash>...');
+    if (positionals.length < 2) throw new Error("Usage: <id> <hash>...");
     const id = positionals[0];
     const hashes = positionals.slice(1);
-    const path = sub === 'assign-key'
-      ? `/guardrails/${encodeURIComponent(id)}/assignments/keys`
-      : `/guardrails/${encodeURIComponent(id)}/assignments/keys/remove`;
-    const data = await api('POST', path, {
+    const path =
+      sub === "assign-key"
+        ? `/guardrails/${encodeURIComponent(id)}/assignments/keys`
+        : `/guardrails/${encodeURIComponent(id)}/assignments/keys/remove`;
+    const data = await api("POST", path, {
       auth: authFromValues(values),
       requiresManagement: true,
-      body: { key_hashes: hashes }
+      body: { key_hashes: hashes },
     });
     printResult(data);
     return 0;
   }
 
-  if (sub === 'assign-member' || sub === 'unassign-member') {
+  if (sub === "assign-member" || sub === "unassign-member") {
     const { values, positionals } = parseArgs(rest, {});
-    if (positionals.length < 2) throw new Error('Usage: <id> <user_id>...');
+    if (positionals.length < 2) throw new Error("Usage: <id> <user_id>...");
     const id = positionals[0];
     const userIds = positionals.slice(1);
-    const path = sub === 'assign-member'
-      ? `/guardrails/${encodeURIComponent(id)}/assignments/members`
-      : `/guardrails/${encodeURIComponent(id)}/assignments/members/remove`;
-    const data = await api('POST', path, {
+    const path =
+      sub === "assign-member"
+        ? `/guardrails/${encodeURIComponent(id)}/assignments/members`
+        : `/guardrails/${encodeURIComponent(id)}/assignments/members/remove`;
+    const data = await api("POST", path, {
       auth: authFromValues(values),
       requiresManagement: true,
-      body: { user_ids: userIds }
+      body: { user_ids: userIds },
     });
     printResult(data);
     return 0;

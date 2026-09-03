@@ -1,7 +1,7 @@
-import { stdin } from 'node:process';
-import { parseArgs, authFromValues } from '../args.js';
-import { api } from '../api.js';
-import { printJSON, out } from '../output.js';
+import { stdin } from "node:process";
+import { parseArgs, authFromValues } from "../args.js";
+import { api } from "../api.js";
+import { printJSON, out } from "../output.js";
 
 const HELP = `Usage: openrouter request <METHOD> <path> [options]
 
@@ -21,27 +21,27 @@ Options:
 `;
 
 async function readStdin() {
-  let data = '';
+  let data = "";
   for await (const chunk of stdin) data += chunk;
   return data;
 }
 
 async function loadBody(value) {
-  if (value === '-') return JSON.parse(await readStdin());
-  if (value.startsWith('@')) {
-    const { readFile } = await import('node:fs/promises');
-    return JSON.parse(await readFile(value.slice(1), 'utf8'));
+  if (value === "-") return JSON.parse(await readStdin());
+  if (value.startsWith("@")) {
+    const { readFile } = await import("node:fs/promises");
+    return JSON.parse(await readFile(value.slice(1), "utf8"));
   }
   return JSON.parse(value);
 }
 
 export async function requestCommand(argv) {
   const { values, positionals } = parseArgs(argv, {
-    body: { type: 'string' },
-    query: { type: 'string', multiple: true },
-    header: { type: 'string', multiple: true },
-    binary: { type: 'string' },
-    raw: { type: 'boolean' }
+    body: { type: "string" },
+    query: { type: "string", multiple: true },
+    header: { type: "string", multiple: true },
+    binary: { type: "string" },
+    raw: { type: "boolean" },
   });
   if (values.help) {
     process.stdout.write(HELP);
@@ -56,13 +56,13 @@ export async function requestCommand(argv) {
 
   const query = {};
   for (const q of values.query || []) {
-    const i = q.indexOf('=');
+    const i = q.indexOf("=");
     if (i === -1) throw new Error(`bad --query (need k=v): ${q}`);
     query[q.slice(0, i)] = q.slice(i + 1);
   }
   const headers = {};
   for (const h of values.header || []) {
-    const i = h.indexOf(':');
+    const i = h.indexOf(":");
     if (i === -1) throw new Error(`bad --header (need k:v): ${h}`);
     headers[h.slice(0, i).trim()] = h.slice(i + 1).trim();
   }
@@ -70,16 +70,16 @@ export async function requestCommand(argv) {
   const opts = {
     auth: authFromValues(values),
     headers,
-    query: Object.keys(query).length ? query : undefined
+    query: Object.keys(query).length ? query : undefined,
   };
   if (values.body !== undefined) opts.body = await loadBody(values.body);
 
   if (values.binary) {
     opts.binary = true;
     const bytes = await api(method, path, opts);
-    if (values.binary === '-') process.stdout.write(Buffer.from(bytes));
+    if (values.binary === "-") process.stdout.write(Buffer.from(bytes));
     else {
-      const { writeFile } = await import('node:fs/promises');
+      const { writeFile } = await import("node:fs/promises");
       await writeFile(values.binary, Buffer.from(bytes));
     }
     return 0;
@@ -94,7 +94,7 @@ export async function requestCommand(argv) {
 
   const data = await api(method, path, opts);
   if (data == null) return 0;
-  if (typeof data === 'string') out(data);
+  if (typeof data === "string") out(data);
   else printJSON(data);
   return 0;
 }

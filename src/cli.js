@@ -1,26 +1,26 @@
-import { setJsonMode, setQuiet, outln } from './output.js';
-import { loginCommand, logoutCommand } from './commands/login.js';
-import { whoamiCommand, creditsCommand, activityCommand } from './commands/account.js';
-import { modelsCommand, providersCommand } from './commands/models.js';
-import { chatCommand, completeCommand } from './commands/chat.js';
-import { embedCommand } from './commands/embed.js';
-import { rerankCommand } from './commands/rerank.js';
-import { speechCommand } from './commands/speech.js';
-import { videoCommand } from './commands/video.js';
-import { messagesCommand, responsesCommand } from './commands/messages.js';
-import { generationCommand } from './commands/generation.js';
-import { keysCommand } from './commands/keys.js';
-import { requestCommand } from './commands/request.js';
-import { guardrailsCommand } from './commands/guardrails.js';
-import { workspacesCommand } from './commands/workspaces.js';
-import { orgCommand, zdrCommand, authCodeCommand } from './commands/misc.js';
-import { DEFAULT_BASE_URL } from './config.js';
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { setJsonMode, setQuiet, outln } from "./output.js";
+import { loginCommand, logoutCommand } from "./commands/login.js";
+import { whoamiCommand, creditsCommand, activityCommand } from "./commands/account.js";
+import { modelsCommand, providersCommand } from "./commands/models.js";
+import { chatCommand, completeCommand } from "./commands/chat.js";
+import { embedCommand } from "./commands/embed.js";
+import { rerankCommand } from "./commands/rerank.js";
+import { speechCommand } from "./commands/speech.js";
+import { videoCommand } from "./commands/video.js";
+import { messagesCommand, responsesCommand } from "./commands/messages.js";
+import { generationCommand } from "./commands/generation.js";
+import { keysCommand } from "./commands/keys.js";
+import { requestCommand } from "./commands/request.js";
+import { guardrailsCommand } from "./commands/guardrails.js";
+import { workspacesCommand } from "./commands/workspaces.js";
+import { orgCommand, zdrCommand, authCodeCommand } from "./commands/misc.js";
+import { DEFAULT_BASE_URL } from "./config.js";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const pkgPath = join(dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
-const VERSION = JSON.parse(readFileSync(pkgPath, 'utf8')).version;
+const pkgPath = join(dirname(fileURLToPath(import.meta.url)), "..", "package.json");
+const VERSION = JSON.parse(readFileSync(pkgPath, "utf8")).version;
 
 const COMMANDS = {
   login: loginCommand,
@@ -45,8 +45,8 @@ const COMMANDS = {
   workspaces: workspacesCommand,
   org: orgCommand,
   zdr: zdrCommand,
-  'auth-code': authCodeCommand,
-  request: requestCommand
+  "auth-code": authCodeCommand,
+  request: requestCommand,
 };
 
 const HELP = `openrouter - CLI for the OpenRouter API
@@ -131,10 +131,10 @@ function preParseGlobals(argv) {
   let version = false;
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
-    if (a === '--json') json = true;
-    else if (a === '-q' || a === '--quiet') quiet = true;
-    else if (a === '-V' || a === '--version') version = true;
-    else if (a === '-h' || a === '--help') {
+    if (a === "--json") json = true;
+    else if (a === "-q" || a === "--quiet") quiet = true;
+    else if (a === "-V" || a === "--version") version = true;
+    else if (a === "-h" || a === "--help") {
       help = true;
       out.push(a); // forward so subcommand help can also pick it up
     } else out.push(a);
@@ -166,7 +166,7 @@ export async function run(argv) {
     return safeExit(1);
   }
   const code = await handler(rest);
-  if (typeof code === 'number') await safeExit(code);
+  if (typeof code === "number") await safeExit(code);
 }
 
 function safeExit(code) {
@@ -183,7 +183,7 @@ function safeExit(code) {
     for (const stream of [process.stdout, process.stderr]) {
       if (stream && stream.writableLength > 0) {
         pending++;
-        stream.write('', done);
+        stream.write("", done);
       }
     }
     if (pending === 0) {

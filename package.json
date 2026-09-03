@@ -50,6 +50,11 @@
     "access": "public"
   },
   "scripts": {
-    "start": "node bin/openrouter.js"
+    "start": "node bin/openrouter.js",
+    "format": "biome format --write .",
+    "format:check": "biome ci ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.12"
   }
 }

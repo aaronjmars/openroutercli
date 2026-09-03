@@ -1,6 +1,6 @@
-import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from '../args.js';
-import { api } from '../api.js';
-import { writeBinaryOutput } from '../output.js';
+import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from "../args.js";
+import { api } from "../api.js";
+import { writeBinaryOutput } from "../output.js";
 
 const HELP = `Usage: openrouter speech [text...] [options]
 
@@ -17,37 +17,37 @@ Options:
 
 export async function speechCommand(argv) {
   const { values, positionals } = parseArgs(argv, {
-    model: { type: 'string', short: 'm' },
-    voice: { type: 'string' },
-    format: { type: 'string' },
-    speed: { type: 'string' },
-    out: { type: 'string', short: 'o' },
-    provider: { type: 'string' }
+    model: { type: "string", short: "m" },
+    voice: { type: "string" },
+    format: { type: "string" },
+    speed: { type: "string" },
+    out: { type: "string", short: "o" },
+    provider: { type: "string" },
   });
   if (values.help) {
     process.stdout.write(HELP);
     return 0;
   }
-  if (!values.model) throw new Error('--model is required');
+  if (!values.model) throw new Error("--model is required");
 
-  let text = positionals.join(' ').trim();
+  let text = positionals.join(" ").trim();
   const piped = await readStdinIfPiped();
   if (piped) text = text ? `${text}\n${piped}` : piped;
-  if (!text) throw new Error('No input text.');
+  if (!text) throw new Error("No input text.");
 
   const body = { model: values.model, input: text };
   if (values.voice) body.voice = values.voice;
   if (values.format) body.response_format = values.format;
-  if (values.speed) body.speed = numberOption(values.speed, '--speed');
+  if (values.speed) body.speed = numberOption(values.speed, "--speed");
   if (values.provider) body.provider = JSON.parse(values.provider);
 
-  const bytes = await api('POST', '/audio/speech', {
+  const bytes = await api("POST", "/audio/speech", {
     auth: authFromValues(values),
     body,
-    binary: true
+    binary: true,
   });
 
-  const out = values.out || `out.${values.format || 'mp3'}`;
+  const out = values.out || `out.${values.format || "mp3"}`;
   await writeBinaryOutput(bytes, out);
   return 0;
 }
