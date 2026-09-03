@@ -1,9 +1,9 @@
-import { resolveAuth } from './config.js';
+import { resolveAuth } from "./config.js";
 
 export class APIError extends Error {
   constructor(message, { status, body } = {}) {
     super(message);
-    this.name = 'APIError';
+    this.name = "APIError";
     this.status = status;
     this.body = body;
     this.exitCode = 2;
@@ -12,9 +12,9 @@ export class APIError extends Error {
 
 function buildHeaders({ apiKey, referer, title, extra }) {
   const headers = {
-    Accept: 'application/json',
-    'HTTP-Referer': referer,
-    'X-Title': title
+    Accept: "application/json",
+    "HTTP-Referer": referer,
+    "X-Title": title,
   };
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
   return { ...headers, ...(extra || {}) };
@@ -22,7 +22,7 @@ function buildHeaders({ apiKey, referer, title, extra }) {
 
 function joinUrl(base, path) {
   if (/^https?:\/\//i.test(path)) return path;
-  return base.replace(/\/$/, '') + (path.startsWith('/') ? path : '/' + path);
+  return base.replace(/\/$/, "") + (path.startsWith("/") ? path : "/" + path);
 }
 
 async function parseError(res) {
@@ -33,10 +33,10 @@ async function parseError(res) {
   } catch {}
   const message =
     (body && body.error && body.error.message) ||
-    (typeof body === 'string' ? body : `HTTP ${res.status}`);
+    (typeof body === "string" ? body : `HTTP ${res.status}`);
   throw new APIError(`${res.status} ${res.statusText}: ${message}`, {
     status: res.status,
-    body
+    body,
   });
 }
 
@@ -46,28 +46,30 @@ export async function api(method, path, opts = {}) {
   const auth = await resolveAuth(authOpts);
   if (opts.requireAuth !== false && !auth.apiKey) {
     const msg = opts.requiresManagement
-      ? 'No API key set. This command needs a management key. Run `openrouter login --management` or set OPENROUTER_MANAGEMENT_KEY.'
-      : 'No API key set. Run `openrouter login` or `openrouter login --key sk-or-...`, or set OPENROUTER_API_KEY.';
+      ? "No API key set. This command needs a management key. Run `openrouter login --management` or set OPENROUTER_MANAGEMENT_KEY."
+      : "No API key set. Run `openrouter login` or `openrouter login --key sk-or-...`, or set OPENROUTER_API_KEY.";
     const e = new Error(msg);
     e.exitCode = 3;
     throw e;
   }
 
-  const url = joinUrl(auth.baseUrl, path) + (opts.query ? '?' + new URLSearchParams(opts.query).toString() : '');
+  const url =
+    joinUrl(auth.baseUrl, path) +
+    (opts.query ? "?" + new URLSearchParams(opts.query).toString() : "");
   const headers = buildHeaders({
     apiKey: auth.apiKey,
     referer: auth.referer,
     title: auth.title,
-    extra: opts.headers
+    extra: opts.headers,
   });
 
   let body;
   if (opts.body !== undefined) {
-    if (opts.body instanceof Uint8Array || typeof opts.body === 'string') {
+    if (opts.body instanceof Uint8Array || typeof opts.body === "string") {
       body = opts.body;
     } else {
       body = JSON.stringify(opts.body);
-      headers['Content-Type'] = 'application/json';
+      headers["Content-Type"] = "application/json";
     }
   }
 
@@ -75,7 +77,7 @@ export async function api(method, path, opts = {}) {
     method: method.toUpperCase(),
     headers,
     body,
-    signal: opts.signal
+    signal: opts.signal,
   });
 
   if (!res.ok) await parseError(res);
@@ -96,31 +98,30 @@ export async function api(method, path, opts = {}) {
 // non-2xx status, so nothing above this catches them.
 export function assertNoStreamError(evt) {
   if (!evt) return;
-  const err = evt.error ?? (evt.type === 'error' ? evt : null);
+  const err = evt.error ?? (evt.type === "error" ? evt : null);
   if (!err) return;
-  const message =
-    (typeof err === 'string' ? err : err.message) || JSON.stringify(err);
+  const message = (typeof err === "string" ? err : err.message) || JSON.stringify(err);
   throw new APIError(`stream error: ${message}`);
 }
 
 export async function* sseStream(res) {
   if (!res.body) return;
   const reader = res.body.getReader();
-  const decoder = new TextDecoder('utf8');
-  let buffer = '';
+  const decoder = new TextDecoder("utf8");
+  let buffer = "";
   while (true) {
     const { value, done } = await reader.read();
     if (done) break;
     buffer += decoder.decode(value, { stream: true });
     let idx;
-    while ((idx = buffer.indexOf('\n')) !== -1) {
-      const line = buffer.slice(0, idx).replace(/\r$/, '');
+    while ((idx = buffer.indexOf("\n")) !== -1) {
+      const line = buffer.slice(0, idx).replace(/\r$/, "");
       buffer = buffer.slice(idx + 1);
       if (!line) continue;
-      if (line.startsWith(':')) continue; // SSE comment / keepalive
-      if (line.startsWith('data:')) {
+      if (line.startsWith(":")) continue; // SSE comment / keepalive
+      if (line.startsWith("data:")) {
         const data = line.slice(5).trim();
-        if (data === '[DONE]') return;
+        if (data === "[DONE]") return;
         try {
           yield JSON.parse(data);
         } catch {

@@ -1,6 +1,6 @@
-import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from '../args.js';
-import { api } from '../api.js';
-import { outln, pricePerMillion, printResult, table } from '../output.js';
+import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from "../args.js";
+import { api } from "../api.js";
+import { outln, pricePerMillion, printResult, table } from "../output.js";
 
 const HELP = `Usage: openrouter embed [text...] [options]
        openrouter embed models
@@ -17,70 +17,75 @@ Options:
 `;
 
 export async function embedCommand(argv) {
-  if (argv[0] === 'models') {
+  if (argv[0] === "models") {
     const { values } = parseArgs(argv.slice(1), {});
     if (values.help) {
       process.stdout.write(HELP);
       return 0;
     }
-    const data = await api('GET', '/embeddings/models', {
+    const data = await api("GET", "/embeddings/models", {
       auth: authFromValues(values),
-      requireAuth: false
+      requireAuth: false,
     });
     printResult(data, () => {
       const rows = data.data || [];
       table(rows, [
-        { label: 'id', value: (m) => m.id },
-        { label: 'context', value: (m) => m.context_length ?? '' },
+        { label: "id", value: (m) => m.id },
+        { label: "context", value: (m) => m.context_length ?? "" },
         {
-          label: '$/M tokens',
-          value: (m) => pricePerMillion((m.pricing || {}).prompt)
+          label: "$/M tokens",
+          value: (m) => pricePerMillion((m.pricing || {}).prompt),
         },
-        { label: 'name', value: (m) => m.name || '' }
+        { label: "name", value: (m) => m.name || "" },
       ]);
     });
     return 0;
   }
 
   const { values, positionals } = parseArgs(argv, {
-    model: { type: 'string', short: 'm' },
-    input: { type: 'string', short: 'i', multiple: true },
-    'input-type': { type: 'string' },
-    dimensions: { type: 'string' },
-    encoding: { type: 'string' },
-    provider: { type: 'string' }
+    model: { type: "string", short: "m" },
+    input: { type: "string", short: "i", multiple: true },
+    "input-type": { type: "string" },
+    dimensions: { type: "string" },
+    encoding: { type: "string" },
+    provider: { type: "string" },
   });
   if (values.help) {
     process.stdout.write(HELP);
     return 0;
   }
-  if (!values.model) throw new Error('--model is required');
+  if (!values.model) throw new Error("--model is required");
 
   const inputs = [...(values.input || []), ...positionals];
   const piped = await readStdinIfPiped();
   if (piped) inputs.push(piped);
-  if (!inputs.length) throw new Error('No input. Pass text, use --input, or pipe stdin.');
+  if (!inputs.length) throw new Error("No input. Pass text, use --input, or pipe stdin.");
 
   const body = {
     model: values.model,
-    input: inputs.length === 1 ? inputs[0] : inputs
+    input: inputs.length === 1 ? inputs[0] : inputs,
   };
-  if (values['input-type']) body.input_type = values['input-type'];
-  if (values.dimensions) body.dimensions = numberOption(values.dimensions, '--dimensions');
+  if (values["input-type"]) body.input_type = values["input-type"];
+  if (values.dimensions) body.dimensions = numberOption(values.dimensions, "--dimensions");
   if (values.encoding) body.encoding_format = values.encoding;
   if (values.provider) body.provider = JSON.parse(values.provider);
 
-  const data = await api('POST', '/embeddings', {
+  const data = await api("POST", "/embeddings", {
     auth: authFromValues(values),
-    body
+    body,
   });
   printResult(data, () => {
     const arr = data.data || [];
     for (const e of arr) {
       const v = e.embedding;
       if (Array.isArray(v))
-        outln(`[${v.length}d] ${v.slice(0, 4).map((x) => x.toFixed(5)).join(', ')}, ...`);
-      else outln(String(v).slice(0, 80) + '...');
+        outln(
+          `[${v.length}d] ${v
+            .slice(0, 4)
+            .map((x) => x.toFixed(5))
+            .join(", ")}, ...`,
+        );
+      else outln(String(v).slice(0, 80) + "...");
     }
   });
   return 0;

@@ -1,37 +1,35 @@
-import { promises as fs } from 'node:fs';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
+import { promises as fs } from "node:fs";
+import { homedir } from "node:os";
+import { join } from "node:path";
 
-const XDG = process.env.XDG_CONFIG_HOME || join(homedir(), '.config');
-const CONFIG_DIR = join(XDG, 'openrouter');
-const CONFIG_FILE = join(CONFIG_DIR, 'config.json');
+const XDG = process.env.XDG_CONFIG_HOME || join(homedir(), ".config");
+const CONFIG_DIR = join(XDG, "openrouter");
+const CONFIG_FILE = join(CONFIG_DIR, "config.json");
 
-export const DEFAULT_BASE_URL = 'https://openrouter.ai/api/v1';
-export const DEFAULT_AUTH_URL = 'https://openrouter.ai/auth';
-export const PROVISIONING_KEYS_URL =
-  'https://openrouter.ai/settings/provisioning-keys';
+export const DEFAULT_BASE_URL = "https://openrouter.ai/api/v1";
+export const DEFAULT_AUTH_URL = "https://openrouter.ai/auth";
+export const PROVISIONING_KEYS_URL = "https://openrouter.ai/settings/provisioning-keys";
 
 export async function loadConfig() {
   try {
-    const raw = await fs.readFile(CONFIG_FILE, 'utf8');
+    const raw = await fs.readFile(CONFIG_FILE, "utf8");
     return JSON.parse(raw);
   } catch (err) {
-    if (err.code === 'ENOENT') return {};
+    if (err.code === "ENOENT") return {};
     throw err;
   }
 }
 
 export async function saveConfig(cfg) {
   await fs.mkdir(CONFIG_DIR, { recursive: true, mode: 0o700 });
-  const tmp = CONFIG_FILE + '.tmp';
+  const tmp = CONFIG_FILE + ".tmp";
   await fs.writeFile(tmp, JSON.stringify(cfg, null, 2), { mode: 0o600 });
   await fs.rename(tmp, CONFIG_FILE);
 }
 
 export async function resolveAuth(opts = {}) {
   const cfg = await loadConfig();
-  const userKey =
-    process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY || cfg.apiKey;
+  const userKey = process.env.OPENROUTER_API_KEY || process.env.OPENROUTER_KEY || cfg.apiKey;
   const mgmtKey = process.env.OPENROUTER_MANAGEMENT_KEY || cfg.managementKey;
 
   // If the caller explicitly passed --key, that always wins.
@@ -48,23 +46,19 @@ export async function resolveAuth(opts = {}) {
   }
 
   const baseUrl =
-    opts.baseUrl ||
-    process.env.OPENROUTER_BASE_URL ||
-    cfg.baseUrl ||
-    DEFAULT_BASE_URL;
+    opts.baseUrl || process.env.OPENROUTER_BASE_URL || cfg.baseUrl || DEFAULT_BASE_URL;
   const referer =
     opts.referer ||
     process.env.OPENROUTER_REFERER ||
     cfg.referer ||
-    'https://github.com/aaronjmars/openroutercli';
-  const title =
-    opts.title || process.env.OPENROUTER_TITLE || cfg.title || 'openrouter-cli';
+    "https://github.com/aaronjmars/openroutercli";
+  const title = opts.title || process.env.OPENROUTER_TITLE || cfg.title || "openrouter-cli";
   return {
     apiKey,
     baseUrl,
     referer,
     title,
     hasManagementKey: !!mgmtKey,
-    hasUserKey: !!userKey
+    hasUserKey: !!userKey,
   };
 }

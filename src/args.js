@@ -1,15 +1,15 @@
-import { parseArgs as nodeParseArgs } from 'node:util';
-import { stdin } from 'node:process';
-import { isJsonMode } from './output.js';
+import { parseArgs as nodeParseArgs } from "node:util";
+import { stdin } from "node:process";
+import { isJsonMode } from "./output.js";
 
 const GLOBAL_OPTIONS = {
-  key: { type: 'string', short: 'k' },
-  'base-url': { type: 'string' },
-  referer: { type: 'string' },
-  title: { type: 'string' },
-  json: { type: 'boolean' },
-  quiet: { type: 'boolean', short: 'q' },
-  help: { type: 'boolean', short: 'h' }
+  key: { type: "string", short: "k" },
+  "base-url": { type: "string" },
+  referer: { type: "string" },
+  title: { type: "string" },
+  json: { type: "boolean" },
+  quiet: { type: "boolean", short: "q" },
+  help: { type: "boolean", short: "h" },
 };
 
 export function parseArgs(argv, options = {}) {
@@ -18,7 +18,7 @@ export function parseArgs(argv, options = {}) {
     args: argv,
     options: merged,
     allowPositionals: true,
-    strict: true
+    strict: true,
   });
 }
 
@@ -28,15 +28,15 @@ export function parseArgs(argv, options = {}) {
 export function numberOption(value, flag) {
   if (value === undefined) return undefined;
   const n = Number(value);
-  if (String(value).trim() === '' || !Number.isFinite(n)) {
+  if (String(value).trim() === "" || !Number.isFinite(n)) {
     throw new Error(`Invalid number for ${flag}: "${value}"`);
   }
   return n;
 }
 
 export const PAGINATION_OPTIONS = {
-  offset: { type: 'string' },
-  limit: { type: 'string' }
+  offset: { type: "string" },
+  limit: { type: "string" },
 };
 
 export function paginationQuery(values) {
@@ -49,7 +49,7 @@ export function paginationQuery(values) {
 export function authFromValues(values) {
   const out = {};
   if (values.key) out.key = values.key;
-  if (values['base-url']) out.baseUrl = values['base-url'];
+  if (values["base-url"]) out.baseUrl = values["base-url"];
   if (values.referer) out.referer = values.referer;
   if (values.title) out.title = values.title;
   return out;
@@ -57,14 +57,13 @@ export function authFromValues(values) {
 
 export async function readStdinIfPiped() {
   if (stdin.isTTY) return null;
-  let data = '';
+  let data = "";
   for await (const chunk of stdin) data += chunk;
   return data.trim() || null;
 }
 
 export function shouldStream(values) {
   return (
-    values.stream ||
-    (!values['no-stream'] && !values.raw && !isJsonMode() && process.stdout.isTTY)
+    values.stream || (!values["no-stream"] && !values.raw && !isJsonMode() && process.stdout.isTTY)
   );
 }

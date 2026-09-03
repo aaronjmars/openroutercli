@@ -1,11 +1,11 @@
-import readline from 'node:readline/promises';
-import { stdin, stdout } from 'node:process';
-import { parseArgs, authFromValues, numberOption, shouldStream } from '../args.js';
-import { api, assertNoStreamError, sseStream } from '../api.js';
-import { c, info, isJsonMode, out, outln, printJSON } from '../output.js';
+import readline from "node:readline/promises";
+import { stdin, stdout } from "node:process";
+import { parseArgs, authFromValues, numberOption, shouldStream } from "../args.js";
+import { api, assertNoStreamError, sseStream } from "../api.js";
+import { c, info, isJsonMode, out, outln, printJSON } from "../output.js";
 
-const DEFAULT_MODEL = 'openrouter/auto';
-const ERROR_FINISH_REASONS = ['error', 'content_filter'];
+const DEFAULT_MODEL = "openrouter/auto";
+const ERROR_FINISH_REASONS = ["error", "content_filter"];
 
 const HELP = `Usage: openrouter chat [prompt...] [options]
 
@@ -45,22 +45,22 @@ Options:
 
 async function readStdinIfPiped() {
   if (stdin.isTTY) return null;
-  let data = '';
+  let data = "";
   for await (const chunk of stdin) data += chunk;
   return data.trimEnd() || null;
 }
 
 async function loadJsonOrFile(value) {
-  if (value.startsWith('@')) {
-    const { readFile } = await import('node:fs/promises');
-    const text = await readFile(value.slice(1), 'utf8');
+  if (value.startsWith("@")) {
+    const { readFile } = await import("node:fs/promises");
+    const text = await readFile(value.slice(1), "utf8");
     return JSON.parse(text);
   }
-  if (value.startsWith('{') || value.startsWith('[')) return JSON.parse(value);
+  if (value.startsWith("{") || value.startsWith("[")) return JSON.parse(value);
   // Bare value: try it as a file path first, then as inline JSON.
   try {
-    const { readFile } = await import('node:fs/promises');
-    const text = await readFile(value, 'utf8');
+    const { readFile } = await import("node:fs/promises");
+    const text = await readFile(value, "utf8");
     return JSON.parse(text);
   } catch {
     return JSON.parse(value);
@@ -68,45 +68,45 @@ async function loadJsonOrFile(value) {
 }
 
 async function imageToContent(value) {
-  if (/^https?:\/\//i.test(value) || value.startsWith('data:')) {
-    return { type: 'image_url', image_url: { url: value } };
+  if (/^https?:\/\//i.test(value) || value.startsWith("data:")) {
+    return { type: "image_url", image_url: { url: value } };
   }
-  const { readFile } = await import('node:fs/promises');
+  const { readFile } = await import("node:fs/promises");
   const buf = await readFile(value);
-  const ext = (value.split('.').pop() || '').toLowerCase();
+  const ext = (value.split(".").pop() || "").toLowerCase();
   const mime =
-    ext === 'png'
-      ? 'image/png'
-      : ext === 'webp'
-      ? 'image/webp'
-      : ext === 'gif'
-      ? 'image/gif'
-      : 'image/jpeg';
+    ext === "png"
+      ? "image/png"
+      : ext === "webp"
+        ? "image/webp"
+        : ext === "gif"
+          ? "image/gif"
+          : "image/jpeg";
   return {
-    type: 'image_url',
-    image_url: { url: `data:${mime};base64,${buf.toString('base64')}` }
+    type: "image_url",
+    image_url: { url: `data:${mime};base64,${buf.toString("base64")}` },
   };
 }
 
 const NUMERIC_SAMPLING = {
-  temperature: 'temperature',
-  'top-p': 'top_p',
-  'top-k': 'top_k',
-  'max-tokens': 'max_tokens',
-  seed: 'seed',
-  'frequency-penalty': 'frequency_penalty',
-  'presence-penalty': 'presence_penalty',
-  'repetition-penalty': 'repetition_penalty',
-  'min-p': 'min_p'
+  temperature: "temperature",
+  "top-p": "top_p",
+  "top-k": "top_k",
+  "max-tokens": "max_tokens",
+  seed: "seed",
+  "frequency-penalty": "frequency_penalty",
+  "presence-penalty": "presence_penalty",
+  "repetition-penalty": "repetition_penalty",
+  "min-p": "min_p",
 };
 
 function applySamplingOptions(body, values) {
-  if (values.models) body.models = values.models.split(',').map((s) => s.trim());
+  if (values.models) body.models = values.models.split(",").map((s) => s.trim());
   for (const [flag, field] of Object.entries(NUMERIC_SAMPLING)) {
     const n = numberOption(values[flag], `--${flag}`);
     if (n !== undefined) body[field] = n;
   }
-  if (values.stop) body.stop = values.stop.split(',');
+  if (values.stop) body.stop = values.stop.split(",");
   if (values.reasoning) body.reasoning = { effort: values.reasoning };
 }
 
@@ -114,7 +114,7 @@ async function buildUserContent(values, prompt, withImages) {
   const images = withImages ? values.image || [] : [];
   if (images.length === 0) return prompt;
   const parts = [];
-  if (prompt) parts.push({ type: 'text', text: prompt });
+  if (prompt) parts.push({ type: "text", text: prompt });
   for (const img of images) parts.push(await imageToContent(img));
   return parts;
 }
@@ -124,12 +124,12 @@ async function buildUserContent(values, prompt, withImages) {
 async function applyRequestOptions(body, values) {
   applySamplingOptions(body, values);
 
-  if (values['json-output']) body.response_format = { type: 'json_object' };
+  if (values["json-output"]) body.response_format = { type: "json_object" };
   if (values.schema) {
     const schema = await loadJsonOrFile(values.schema);
     body.response_format = {
-      type: 'json_schema',
-      json_schema: { name: 'response', schema, strict: true }
+      type: "json_schema",
+      json_schema: { name: "response", schema, strict: true },
     };
   }
   if (values.tool && values.tool.length) {
@@ -138,23 +138,23 @@ async function applyRequestOptions(body, values) {
       const def = await loadJsonOrFile(t);
       // Accept either {type, function} or a bare {name, parameters, ...}
       if (def.type && def.function) body.tools.push(def);
-      else body.tools.push({ type: 'function', function: def });
+      else body.tools.push({ type: "function", function: def });
     }
   }
-  if (values['tool-choice']) {
-    const v = values['tool-choice'];
-    if (['auto', 'none', 'required'].includes(v)) body.tool_choice = v;
-    else body.tool_choice = { type: 'function', function: { name: v } };
+  if (values["tool-choice"]) {
+    const v = values["tool-choice"];
+    if (["auto", "none", "required"].includes(v)) body.tool_choice = v;
+    else body.tool_choice = { type: "function", function: { name: v } };
   }
   if (values.provider) body.provider = await loadJsonOrFile(values.provider);
 }
 
 async function buildBody(values, prompt) {
   const messages = [];
-  if (values.system) messages.push({ role: 'system', content: values.system });
+  if (values.system) messages.push({ role: "system", content: values.system });
   messages.push({
-    role: 'user',
-    content: await buildUserContent(values, prompt, true)
+    role: "user",
+    content: await buildUserContent(values, prompt, true),
   });
   const body = { model: values.model || DEFAULT_MODEL, messages };
   await applyRequestOptions(body, values);
@@ -163,21 +163,21 @@ async function buildBody(values, prompt) {
 
 function printUsage(model, usage) {
   info(
-    `model=${model || ''} prompt=${usage.prompt_tokens} completion=${usage.completion_tokens} total=${usage.total_tokens}`
+    `model=${model || ""} prompt=${usage.prompt_tokens} completion=${usage.completion_tokens} total=${usage.total_tokens}`,
   );
 }
 
 async function streamResponse(body, auth) {
-  const res = await api('POST', '/chat/completions', {
+  const res = await api("POST", "/chat/completions", {
     auth,
     body: { ...body, stream: true },
     raw: true,
-    headers: { Accept: 'text/event-stream' }
+    headers: { Accept: "text/event-stream" },
   });
   let usage = null;
   let model = null;
   let finishReason = null;
-  let text = '';
+  let text = "";
   for await (const evt of sseStream(res)) {
     assertNoStreamError(evt);
     if (evt.usage) usage = evt.usage;
@@ -186,12 +186,12 @@ async function streamResponse(body, auth) {
     if (!choice) continue;
     const delta = choice.delta || choice.message;
     if (!delta) continue;
-    if (typeof delta.content === 'string') {
+    if (typeof delta.content === "string") {
       out(delta.content);
       text += delta.content;
     } else if (Array.isArray(delta.content)) {
       for (const part of delta.content) {
-        if (part.type === 'text' && part.text) {
+        if (part.type === "text" && part.text) {
           out(part.text);
           text += part.text;
         }
@@ -207,37 +207,37 @@ async function streamResponse(body, auth) {
     }
     if (choice.finish_reason) finishReason = choice.finish_reason;
   }
-  if (process.stdout.isTTY) out('\n');
+  if (process.stdout.isTTY) out("\n");
   return { usage, model, finishReason, text };
 }
 
 export async function chatCommand(argv) {
   const { values, positionals } = parseArgs(argv, {
-    model: { type: 'string', short: 'm' },
-    models: { type: 'string' },
-    system: { type: 'string', short: 's' },
-    stream: { type: 'boolean' },
-    'no-stream': { type: 'boolean' },
-    temperature: { type: 'string' },
-    'top-p': { type: 'string' },
-    'top-k': { type: 'string' },
-    'max-tokens': { type: 'string' },
-    seed: { type: 'string' },
-    stop: { type: 'string' },
-    'frequency-penalty': { type: 'string' },
-    'presence-penalty': { type: 'string' },
-    'repetition-penalty': { type: 'string' },
-    'min-p': { type: 'string' },
-    'json-output': { type: 'boolean' },
-    schema: { type: 'string' },
-    tool: { type: 'string', multiple: true },
-    'tool-choice': { type: 'string' },
-    reasoning: { type: 'string' },
-    provider: { type: 'string' },
-    image: { type: 'string', multiple: true },
-    raw: { type: 'boolean' },
-    usage: { type: 'boolean' },
-    interactive: { type: 'boolean', short: 'i' }
+    model: { type: "string", short: "m" },
+    models: { type: "string" },
+    system: { type: "string", short: "s" },
+    stream: { type: "boolean" },
+    "no-stream": { type: "boolean" },
+    temperature: { type: "string" },
+    "top-p": { type: "string" },
+    "top-k": { type: "string" },
+    "max-tokens": { type: "string" },
+    seed: { type: "string" },
+    stop: { type: "string" },
+    "frequency-penalty": { type: "string" },
+    "presence-penalty": { type: "string" },
+    "repetition-penalty": { type: "string" },
+    "min-p": { type: "string" },
+    "json-output": { type: "boolean" },
+    schema: { type: "string" },
+    tool: { type: "string", multiple: true },
+    "tool-choice": { type: "string" },
+    reasoning: { type: "string" },
+    provider: { type: "string" },
+    image: { type: "string", multiple: true },
+    raw: { type: "boolean" },
+    usage: { type: "boolean" },
+    interactive: { type: "boolean", short: "i" },
   });
 
   if (values.help) {
@@ -251,39 +251,37 @@ export async function chatCommand(argv) {
   // the REPL's readline with an exhausted stream and no way to report why.
   if (values.interactive && !stdin.isTTY) {
     throw new Error(
-      '--interactive needs a terminal on stdin. To send piped input as a ' +
-        'single prompt, drop -i: echo "hi" | openrouter chat'
+      "--interactive needs a terminal on stdin. To send piped input as a " +
+        'single prompt, drop -i: echo "hi" | openrouter chat',
     );
   }
 
   const piped = await readStdinIfPiped();
-  let prompt = positionals.join(' ').trim();
+  let prompt = positionals.join(" ").trim();
   if (piped) prompt = prompt ? `${prompt}\n\n${piped}` : piped;
 
-  const wantsInteractive =
-    values.interactive || (!prompt && stdin.isTTY && stdout.isTTY);
+  const wantsInteractive = values.interactive || (!prompt && stdin.isTTY && stdout.isTTY);
 
   if (wantsInteractive) {
     return repl(values, auth);
   }
 
   if (!prompt) {
-    throw new Error('No prompt. Pass text, pipe via stdin, or use --interactive.');
+    throw new Error("No prompt. Pass text, pipe via stdin, or use --interactive.");
   }
 
   const body = await buildBody(values, prompt);
 
   if (!shouldStream(values)) {
-    const data = await api('POST', '/chat/completions', { auth, body });
+    const data = await api("POST", "/chat/completions", { auth, body });
     if (isJsonMode() || values.raw) {
       printJSON(data);
     } else {
       const choice = data.choices && data.choices[0];
       const msg = choice && choice.message;
-      if (msg && typeof msg.content === 'string') outln(msg.content);
+      if (msg && typeof msg.content === "string") outln(msg.content);
       else if (msg && Array.isArray(msg.content)) {
-        for (const part of msg.content)
-          if (part.type === 'text') outln(part.text);
+        for (const part of msg.content) if (part.type === "text") outln(part.text);
       } else outln(JSON.stringify(data));
       if (values.usage && data.usage) printUsage(data.model, data.usage);
     }
@@ -307,8 +305,8 @@ export async function chatCommand(argv) {
 async function repl(values, auth) {
   const rl = readline.createInterface({ input: stdin, output: stdout });
   const history = [];
-  if (values.system) history.push({ role: 'system', content: values.system });
-  outln(c.dim('OpenRouter chat. /exit to quit, /reset to clear history, /model <id> to switch.'));
+  if (values.system) history.push({ role: "system", content: values.system });
+  outln(c.dim("OpenRouter chat. /exit to quit, /reset to clear history, /model <id> to switch."));
   let model = values.model || DEFAULT_MODEL;
   outln(c.dim(`model: ${model}`));
   let firstTurn = true;
@@ -316,23 +314,22 @@ async function repl(values, auth) {
     while (true) {
       let line;
       try {
-        line = await rl.question(c.cyan('› '));
+        line = await rl.question(c.cyan("› "));
       } catch {
         return 0;
       }
       if (line == null) return 0;
       const trimmed = line.trim();
       if (!trimmed) continue;
-      if (trimmed === '/exit' || trimmed === '/quit') return 0;
-      if (trimmed === '/reset') {
+      if (trimmed === "/exit" || trimmed === "/quit") return 0;
+      if (trimmed === "/reset") {
         history.length = 0;
-        if (values.system)
-          history.push({ role: 'system', content: values.system });
+        if (values.system) history.push({ role: "system", content: values.system });
         firstTurn = true;
-        outln(c.dim('(history cleared)'));
+        outln(c.dim("(history cleared)"));
         continue;
       }
-      if (trimmed.startsWith('/model ')) {
+      if (trimmed.startsWith("/model ")) {
         model = trimmed.slice(7).trim();
         outln(c.dim(`model: ${model}`));
         continue;
@@ -340,14 +337,14 @@ async function repl(values, auth) {
       // --image attaches to the opening turn only; resending it every turn
       // would re-upload the same attachment.
       history.push({
-        role: 'user',
-        content: await buildUserContent(values, trimmed, firstTurn)
+        role: "user",
+        content: await buildUserContent(values, trimmed, firstTurn),
       });
       const body = { model, messages: history };
       await applyRequestOptions(body, values);
       try {
         const meta = await streamResponse(body, auth);
-        history.push({ role: 'assistant', content: meta.text });
+        history.push({ role: "assistant", content: meta.text });
         firstTurn = false;
         if (values.usage && meta.usage) printUsage(meta.model, meta.usage);
         if (ERROR_FINISH_REASONS.includes(meta.finishReason)) {
