@@ -36,6 +36,7 @@ create / update options:
   --ignored-models <csv>
   --allowed-providers <csv>
   --ignored-providers <csv>
+  --include-byok / --no-include-byok   Count BYOK spend toward the budget
   --workspace <uuid>        (create only)
 `;
 
@@ -64,6 +65,8 @@ function buildBody(values) {
     body.allowed_providers = csv(values["allowed-providers"]);
   if (values["ignored-providers"] !== undefined)
     body.ignored_providers = csv(values["ignored-providers"]);
+  if (values["include-byok"]) body.include_byok_in_budgets = true;
+  if (values["no-include-byok"]) body.include_byok_in_budgets = false;
   return body;
 }
 
@@ -77,6 +80,8 @@ const COMMON_FIELDS = {
   "ignored-models": { type: "string" },
   "allowed-providers": { type: "string" },
   "ignored-providers": { type: "string" },
+  "include-byok": { type: "boolean" },
+  "no-include-byok": { type: "boolean" },
 };
 
 export async function guardrailsCommand(argv) {

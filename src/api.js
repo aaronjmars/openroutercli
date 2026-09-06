@@ -65,7 +65,17 @@ export async function api(method, path, opts = {}) {
 
   let body;
   if (opts.body !== undefined) {
-    if (opts.body instanceof Uint8Array || typeof opts.body === "string") {
+    // Pass raw byte/string/streaming bodies straight through. FormData in
+    // particular must reach fetch untouched so it can set the multipart
+    // Content-Type (with boundary) itself.
+    const raw =
+      opts.body instanceof Uint8Array ||
+      typeof opts.body === "string" ||
+      (typeof FormData !== "undefined" && opts.body instanceof FormData) ||
+      (typeof Blob !== "undefined" && opts.body instanceof Blob) ||
+      opts.body instanceof ArrayBuffer ||
+      opts.body instanceof URLSearchParams;
+    if (raw) {
       body = opts.body;
     } else {
       body = JSON.stringify(opts.body);

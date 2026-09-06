@@ -6,7 +6,7 @@ import {
   shouldStream,
 } from "../args.js";
 import { api, assertNoStreamError, sseStream } from "../api.js";
-import { isJsonMode, out, outln, printJSON } from "../output.js";
+import { c, isJsonMode, out, outln, printJSON } from "../output.js";
 
 const HELP = `Usage: openrouter messages [prompt...] [options]
 
@@ -17,6 +17,12 @@ Options:
   -s, --system <text>      System prompt
       --max-tokens <n>     (default: 1024)
       --temperature <n>
+      --top-p <n>
+      --top-k <n>
+      --stop <text>        Stop sequence (repeatable via comma)
+      --thinking-budget <n>  Enable extended thinking with a token budget
+      --tool <json|@file>  Anthropic-shaped tool definition (repeatable)
+      --tool-choice <v>    auto | any | <tool name>
       --stream             Stream tokens
       --no-stream
       --raw                Print full JSON response
@@ -34,7 +40,12 @@ Options:
       --temperature <n>
       --top-p <n>
       --seed <n>
-      --reasoning <effort> low | medium | high
+      --reasoning <effort> none|minimal|low|medium|high|xhigh|max
+      --tool <json|@file>  Tool definition (repeatable)
+      --tool-choice <v>    auto | none | required | <tool name>
+      --include <csv>      Extra output fields to include
+      --store              Persist the response server-side
+      --previous-response-id <id>  Continue a stored response
       --stream             Stream tokens (default when TTY)
       --no-stream          Disable streaming
       --raw                Print full JSON response
@@ -72,6 +83,12 @@ export async function messagesCommand(argv) {
     system: { type: "string", short: "s" },
     "max-tokens": { type: "string" },
     temperature: { type: "string" },
+    "top-p": { type: "string" },
+    "top-k": { type: "string" },
+    stop: { type: "string" },
+    "thinking-budget": { type: "string" },
+    tool: { type: "string", multiple: true },
+    "tool-choice": { type: "string" },
     stream: { type: "boolean" },
     "no-stream": { type: "boolean" },
     raw: { type: "boolean" },
@@ -91,7 +108,22 @@ export async function messagesCommand(argv) {
       messages: [{ role: "user", content: prompt }],
     };
     if (values.system) body.system = values.system;
-    applyNumeric(body, values, { temperature: "temperature" });
+    applyNumeric(body, values, {
+      temperature: "temperature",
+      "top-p": "top_p",
+      "top-k": "top_k",
+    });
+    if (values.stop) body.stop_sequences = values.stop.split(",");
+    const budget = numberOption(values["thinking-budget"], "--thinking-budget");
+    if (budget !== undefined) body.thinking = { type: "enabled", budget_tokens: budget };
+    if (values.tool && values.tool.length) {
+      body.tools = [];
+      for (const t of values.tool) body.tools.push(await loadBody(t));
+    }
+    if (values["tool-choice"]) {
+      const v = values["tool-choice"];
+      body.tool_choice = v === "auto" || v === "any" ? { type: v } : { type: "tool", name: v };
+    }
   }
 
   if (shouldStream(values)) {
@@ -104,9 +136,13 @@ export async function messagesCommand(argv) {
     });
     for await (const evt of sseStream(res)) {
       assertNoStreamError(evt);
-      const t = evt.type;
-      if (t === "content_block_delta" && evt.delta && evt.delta.text) {
-        out(evt.delta.text);
+      if (evt.type === "content_block_delta" && evt.delta) {
+        const d = evt.delta;
+        if (d.text) out(d.text);
+        // Extended-thinking and streamed tool-call args arrive as their own
+        // delta types; without these both were silently dropped.
+        else if (d.thinking && process.stdout.isTTY) out(c.dim(d.thinking));
+        else if (d.partial_json) out(d.partial_json);
       }
     }
     if (process.stdout.isTTY) out("\n");
@@ -135,6 +171,11 @@ export async function responsesCommand(argv) {
     "top-p": { type: "string" },
     seed: { type: "string" },
     reasoning: { type: "string" },
+    tool: { type: "string", multiple: true },
+    "tool-choice": { type: "string" },
+    include: { type: "string" },
+    store: { type: "boolean" },
+    "previous-response-id": { type: "string" },
     stream: { type: "boolean" },
     "no-stream": { type: "boolean" },
     raw: { type: "boolean" },
@@ -157,6 +198,18 @@ export async function responsesCommand(argv) {
       seed: "seed",
     });
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
+    if (values.tool && values.tool.length) {
+      body.tools = [];
+      for (const t of values.tool) body.tools.push(await loadBody(t));
+    }
+    if (values["tool-choice"]) {
+      const v = values["tool-choice"];
+      if (["auto", "none", "required"].includes(v)) body.tool_choice = v;
+      else body.tool_choice = { type: "function", name: v };
+    }
+    if (values.include) body.include = values.include.split(",").map((s) => s.trim());
+    if (values.store) body.store = true;
+    if (values["previous-response-id"]) body.previous_response_id = values["previous-response-id"];
   }
 
   if (shouldStream(values)) {
@@ -171,6 +224,14 @@ export async function responsesCommand(argv) {
       assertNoStreamError(evt);
       if (evt.type && evt.type.endsWith("output_text.delta") && evt.delta) {
         out(evt.delta);
+      } else if (
+        evt.type &&
+        (evt.type.endsWith("reasoning_summary_text.delta") ||
+          evt.type.endsWith("reasoning_text.delta")) &&
+        evt.delta &&
+        process.stdout.isTTY
+      ) {
+        out(c.dim(evt.delta));
       }
     }
     if (process.stdout.isTTY) out("\n");

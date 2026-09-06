@@ -21,17 +21,37 @@ Subcommands:
                              architecture, supported params, top provider).
                              Aliases: info, detail
   endpoints <author>/<slug>  List endpoints (provider variants) for a model
+  parameters <author>/<slug> Supported params + popularity analytics (p10/p50/p90)
   user                       Models filtered by your workspace preferences
   count                      Get the total model count
 
 Options for list:
-  --category <name>          programming|roleplay|marketing|technology|...
+  --category <name>          programming|roleplay|marketing|marketing/seo|
+                             technology|science|translation|legal|finance|
+                             health|trivia|academia
   --supported <param>        Filter by supported parameter (e.g. tools)
+  --input-modalities <csv>   text,image,audio,file  (or "all")
   --output-modalities <csv>  text,image,audio,embeddings  (or "all")
+  --order <sort>             Server-side sort: most-popular|newest|top-weekly|
+                             pricing-low-to-high|pricing-high-to-low|
+                             context-high-to-low|throughput-high-to-low|
+                             latency-low-to-high|intelligence-high-to-low|
+                             coding-high-to-low|agentic-high-to-low
   --filter <substr>          Local substring filter on id/name
   --free                     Only :free models
-  --sort <field>             id|name|context|prompt|completion (default: as-returned)
+  --sort <field>             Local sort: id|name|context|prompt|completion
 `;
+
+// Server-side filters shared by `list` and `user`.
+function listQuery(values) {
+  const query = {};
+  if (values.category) query.category = values.category;
+  if (values.supported) query.supported_parameters = values.supported;
+  if (values["input-modalities"]) query.input_modalities = values["input-modalities"];
+  if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
+  if (values.order) query.sort = values.order;
+  return query;
+}
 
 function listFormatter(data) {
   const rows = data.data || [];
@@ -110,6 +130,20 @@ function renderModelDetail(m) {
   outln(c.bold("supported_parameters"));
   outln("  " + ((m.supported_parameters || []).join(", ") || "-"));
   outln("");
+
+  if (m.reasoning && Object.keys(m.reasoning).length) {
+    outln(c.bold("reasoning"));
+    for (const [k, v] of Object.entries(m.reasoning)) {
+      outln(`  ${k}: ${typeof v === "object" ? JSON.stringify(v) : v}`);
+    }
+    outln("");
+  }
+
+  if (m.supported_voices && m.supported_voices.length) {
+    outln(c.bold("supported_voices"));
+    outln("  " + m.supported_voices.join(", "));
+    outln("");
+  }
 
   if (m.default_parameters && Object.keys(m.default_parameters).length) {
     outln(c.bold("default_parameters"));
@@ -241,6 +275,7 @@ export async function modelsCommand(argv) {
     printResult({ ...data, data: { ...(data.data || {}), endpoints: eps } }, () => {
       table(eps, [
         { label: "provider", value: (e) => e.provider_name || e.name || "" },
+        { label: "status", value: (e) => e.status ?? "" },
         { label: "context", value: (e) => e.context_length ?? "" },
         { label: "max_out", value: (e) => e.max_completion_tokens ?? "" },
         PRICE_COLUMN,
@@ -272,20 +307,52 @@ export async function modelsCommand(argv) {
   if (sub === "user") {
     const { values } = parseArgs(rest, {
       workspace: { type: "string" },
+      category: { type: "string" },
+      supported: { type: "string" },
+      "input-modalities": { type: "string" },
+      "output-modalities": { type: "string" },
+      order: { type: "string" },
     });
     if (values.help) {
       process.stdout.write(
-        "Usage: openrouter models user [--workspace <id|slug>]\n\nList models filtered by your workspace provider preferences, privacy, and guardrails.\n",
+        "Usage: openrouter models user [--workspace <id|slug>] [--category <c>] [--supported <p>] [--input-modalities <csv>] [--output-modalities <csv>] [--order <sort>]\n\nList models filtered by your workspace provider preferences, privacy, and guardrails.\n",
       );
       return 0;
     }
-    const query = {};
+    const query = listQuery(values);
     if (values.workspace) query.workspace_id = values.workspace;
     const data = await api("GET", "/models/user", {
       auth: authFromValues(values),
       query,
     });
     printResult(data, () => listFormatter(data));
+    return 0;
+  }
+
+  if (sub === "parameters" || sub === "params") {
+    const { values, positionals } = parseArgs(rest, {
+      provider: { type: "string" },
+    });
+    if (values.help || positionals.length === 0) {
+      process.stdout.write(
+        "Usage: openrouter models parameters <author>/<slug> [--provider <slug>]\n\n" +
+          "Show a model's supported parameters plus popularity analytics\n" +
+          "(p10/p50/p90 per parameter). Optionally scope to one provider.\n",
+      );
+      return values.help ? 0 : 1;
+    }
+    const target = positionals[0];
+    const slash = target.indexOf("/");
+    if (slash === -1) throw new Error("Expected <author>/<slug>");
+    const author = target.slice(0, slash);
+    const slug = target.slice(slash + 1);
+    const query = {};
+    if (values.provider) query.provider = values.provider;
+    const data = await api("GET", `/parameters/${author}/${slug}`, {
+      auth: authFromValues(values),
+      query,
+    });
+    printResult(data);
     return 0;
   }
 
@@ -302,7 +369,9 @@ export async function modelsCommand(argv) {
   const { values } = parseArgs(rest, {
     category: { type: "string" },
     supported: { type: "string" },
+    "input-modalities": { type: "string" },
     "output-modalities": { type: "string" },
+    order: { type: "string" },
     filter: { type: "string" },
     free: { type: "boolean" },
     sort: { type: "string" },
@@ -311,10 +380,7 @@ export async function modelsCommand(argv) {
     process.stdout.write(HELP);
     return 0;
   }
-  const query = {};
-  if (values.category) query.category = values.category;
-  if (values.supported) query.supported_parameters = values.supported;
-  if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
+  const query = listQuery(values);
 
   const data = await api("GET", "/models", {
     auth: authFromValues(values),

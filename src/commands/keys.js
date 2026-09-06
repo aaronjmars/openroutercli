@@ -23,11 +23,13 @@ create options:
   --expires-at <iso>     ISO 8601 UTC expiry
   --workspace <uuid>     Workspace id
   --include-byok         Include BYOK in limit
+  --disabled             Create the key already disabled
 
 update options:
   --name <name>
   --limit <usd>
   --limit-reset <p>
+  --expires-at <iso>     ISO 8601 UTC expiry
   --include-byok / --no-include-byok
   --disabled / --enabled
 `;
@@ -89,6 +91,7 @@ export async function keysCommand(argv) {
       "expires-at": { type: "string" },
       workspace: { type: "string" },
       "include-byok": { type: "boolean" },
+      disabled: { type: "boolean" },
     });
     const name = positionals[0];
     if (!name) throw new Error("name required");
@@ -98,6 +101,7 @@ export async function keysCommand(argv) {
     if (values["expires-at"]) body.expires_at = values["expires-at"];
     if (values.workspace) body.workspace_id = values.workspace;
     if (values["include-byok"]) body.include_byok_in_limit = true;
+    if (values.disabled) body.disabled = true;
     const data = await api("POST", "/keys", {
       auth: authFromValues(values),
       requiresManagement: true,
@@ -118,6 +122,7 @@ export async function keysCommand(argv) {
       name: { type: "string" },
       limit: { type: "string" },
       "limit-reset": { type: "string" },
+      "expires-at": { type: "string" },
       "include-byok": { type: "boolean" },
       "no-include-byok": { type: "boolean" },
       disabled: { type: "boolean" },
@@ -128,6 +133,7 @@ export async function keysCommand(argv) {
     if (values.name) body.name = values.name;
     if (values.limit) body.limit = numberOption(values.limit, "--limit");
     if (values["limit-reset"]) body.limit_reset = values["limit-reset"];
+    if (values["expires-at"]) body.expires_at = values["expires-at"];
     if (values["include-byok"]) body.include_byok_in_limit = true;
     if (values["no-include-byok"]) body.include_byok_in_limit = false;
     if (values.disabled) body.disabled = true;

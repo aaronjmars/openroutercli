@@ -6,10 +6,15 @@ import { chatCommand, completeCommand } from "./commands/chat.js";
 import { embedCommand } from "./commands/embed.js";
 import { rerankCommand } from "./commands/rerank.js";
 import { speechCommand } from "./commands/speech.js";
+import { transcribeCommand } from "./commands/transcribe.js";
 import { videoCommand } from "./commands/video.js";
+import { imageCommand } from "./commands/image.js";
 import { messagesCommand, responsesCommand } from "./commands/messages.js";
 import { generationCommand } from "./commands/generation.js";
 import { keysCommand } from "./commands/keys.js";
+import { byokCommand } from "./commands/byok.js";
+import { filesCommand } from "./commands/files.js";
+import { presetsCommand } from "./commands/presets.js";
 import { requestCommand } from "./commands/request.js";
 import { guardrailsCommand } from "./commands/guardrails.js";
 import { workspacesCommand } from "./commands/workspaces.js";
@@ -36,11 +41,18 @@ const COMMANDS = {
   rerank: rerankCommand,
   speech: speechCommand,
   tts: speechCommand,
+  transcribe: transcribeCommand,
+  stt: transcribeCommand,
   video: videoCommand,
+  image: imageCommand,
+  images: imageCommand,
   messages: messagesCommand,
   responses: responsesCommand,
   generation: generationCommand,
+  presets: presetsCommand,
   keys: keysCommand,
+  byok: byokCommand,
+  files: filesCommand,
   guardrails: guardrailsCommand,
   workspaces: workspacesCommand,
   org: orgCommand,
@@ -69,15 +81,19 @@ Inference:
   embed [text...]        Embeddings
   rerank --query --doc   Reranking
   speech [text...]       Text to speech (audio out)
+  transcribe <file>      Speech to text (audio in). Alias: stt
   video <sub>            Video generation jobs (create / get / wait / download / models)
+  image <sub>            Image generation (create / models / endpoints). Alias: images
 
 Discovery:
-  models [list|show|endpoints|count|user]  List models, full model detail,
-                                           provider variants, count, or your
-                                           workspace-filtered set
+  models [list|show|endpoints|parameters|count|user]  List models, full model
+                                           detail, provider variants, param
+                                           analytics, count, or your set
   embed models                             List embedding models
   video models                             List video generation models
+  image models                             List image generation models
   providers                                List providers (with HQ + datacenters)
+  presets <sub>                            list / get / versions (saved config profiles)
   generation <id> [--content]              Generation metadata or content
   credits                                  Remaining credits
   activity                                 Usage activity (management key)
@@ -85,8 +101,10 @@ Discovery:
 
 Management (require a management key):
   keys <sub>             list / get / create / update / delete
+  byok <sub>             list / get / create / update / delete (provider integrations)
   guardrails <sub>       list / get / create / update / delete / assignments
   workspaces <sub>       list / get / create / update / delete / add-members / remove-members
+  files <sub>            list / get / upload / download / delete
   org members            List organization members
   auth-code              Mint a PKCE authorization code so a user can claim a key
   request <METHOD> <path>  Raw authenticated request to any endpoint
@@ -112,7 +130,7 @@ Environment:
 
 Examples:
   openrouter login
-  openrouter chat "Hello, world" -m anthropic/claude-3.5-sonnet
+  openrouter chat "Hello, world" -m anthropic/claude-sonnet-4.5
   echo "summarize this" | openrouter chat -m openai/gpt-4o-mini --no-stream
   openrouter models --filter claude --json
   openrouter embed -m openai/text-embedding-3-small "hello" "world"

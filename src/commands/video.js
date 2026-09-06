@@ -47,7 +47,10 @@ export async function videoCommand(argv) {
 
   if (sub === "models") {
     const { values } = parseArgs(rest, {});
-    const data = await api("GET", "/videos/models", { auth: authFromValues(values) });
+    const data = await api("GET", "/videos/models", {
+      auth: authFromValues(values),
+      requireAuth: false,
+    });
     printResult(data);
     return 0;
   }

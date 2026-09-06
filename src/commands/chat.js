@@ -28,13 +28,30 @@ Options:
       --presence-penalty <n>    -2.0 to 2.0
       --repetition-penalty <n>  0.0 to 2.0
       --min-p <n>               0.0 to 1.0
+      --top-a <n>               0.0 to 1.0
+      --logprobs                Return log probabilities
+      --top-logprobs <n>        Return top-N logprobs per token (0-20)
+      --logit-bias <json|@file> Token bias map
       --json-output        Ask the model for JSON (response_format=json_object)
       --schema <file|json> JSON schema for structured output
       --tool <file|json>   Tool definition (repeatable). JSON object or @file.json
       --tool-choice <v>    auto | none | required | <tool name>
-      --reasoning <effort> low | medium | high
+      --no-parallel-tools  Disable parallel tool calls
+      --reasoning <effort> none|minimal|low|medium|high|xhigh|max
+      --reasoning-max-tokens <n>  Reasoning token budget (Anthropic-style)
+      --reasoning-exclude  Reason internally but omit reasoning from the output
       --provider <json>    Provider routing options as JSON
+      --web                Enable the web-search plugin (id: web)
+      --web-max-results <n>       Max web results
+      --web-search-prompt <text>  Custom web-search prompt
+      --pdf-engine <e>     PDF parser engine: mistral-ocr | pdf-text | native
+      --plugins <json|@file>      Full plugins array (merged with --web/--pdf-engine)
       --image <url|path>   Attach an image (repeatable). URL or local file
+      --file <path>        Attach a file/PDF (repeatable). Local path
+      --cache-system       Mark the system prompt as a cache breakpoint
+      --cache-user         Mark the user prompt as a cache breakpoint
+      --extra <json|@file> Extra fields merged into the request body
+      --body <json|@file>  Fully-formed body (overrides all other flags; one-shot)
       --raw                Print full JSON response (non-streaming; the REPL
                            always streams, so it is ignored there)
       --usage              Print usage info to stderr after completion
@@ -65,6 +82,27 @@ async function loadJsonOrFile(value) {
   } catch {
     return JSON.parse(value);
   }
+}
+
+const FILE_MIME = {
+  pdf: "application/pdf",
+  txt: "text/plain",
+  md: "text/markdown",
+  csv: "text/csv",
+  json: "application/json",
+  html: "text/html",
+};
+
+async function fileToContent(value) {
+  const { readFile } = await import("node:fs/promises");
+  const buf = await readFile(value);
+  const ext = (value.split(".").pop() || "").toLowerCase();
+  const mime = FILE_MIME[ext] || "application/octet-stream";
+  const filename = value.split("/").pop() || value;
+  return {
+    type: "file",
+    file: { filename, file_data: `data:${mime};base64,${buf.toString("base64")}` },
+  };
 }
 
 async function imageToContent(value) {
@@ -98,6 +136,8 @@ const NUMERIC_SAMPLING = {
   "presence-penalty": "presence_penalty",
   "repetition-penalty": "repetition_penalty",
   "min-p": "min_p",
+  "top-a": "top_a",
+  "top-logprobs": "top_logprobs",
 };
 
 function applySamplingOptions(body, values) {
@@ -107,15 +147,54 @@ function applySamplingOptions(body, values) {
     if (n !== undefined) body[field] = n;
   }
   if (values.stop) body.stop = values.stop.split(",");
-  if (values.reasoning) body.reasoning = { effort: values.reasoning };
+  if (values.logprobs) body.logprobs = true;
+
+  const reasoning = {};
+  if (values.reasoning) reasoning.effort = values.reasoning;
+  const rmax = numberOption(values["reasoning-max-tokens"], "--reasoning-max-tokens");
+  if (rmax !== undefined) reasoning.max_tokens = rmax;
+  if (values["reasoning-exclude"]) reasoning.exclude = true;
+  if (Object.keys(reasoning).length) body.reasoning = reasoning;
+}
+
+async function buildPlugins(values) {
+  const plugins = values.plugins ? await loadJsonOrFile(values.plugins) : [];
+  const list = Array.isArray(plugins) ? plugins : [plugins];
+  if (values.web || values["web-max-results"] || values["web-search-prompt"]) {
+    const web = { id: "web" };
+    const n = numberOption(values["web-max-results"], "--web-max-results");
+    if (n !== undefined) web.max_results = n;
+    if (values["web-search-prompt"]) web.search_prompt = values["web-search-prompt"];
+    list.push(web);
+  }
+  if (values["pdf-engine"]) {
+    list.push({ id: "file-parser", pdf: { engine: values["pdf-engine"] } });
+  }
+  return list;
+}
+
+// Wrap a string into a single text content part so a cache_control breakpoint
+// can be attached; content already in part form is returned untouched.
+function markCache(content) {
+  if (typeof content === "string") {
+    return [{ type: "text", text: content, cache_control: { type: "ephemeral" } }];
+  }
+  if (Array.isArray(content) && content.length) {
+    const parts = content.map((p) => ({ ...p }));
+    parts[parts.length - 1].cache_control = { type: "ephemeral" };
+    return parts;
+  }
+  return content;
 }
 
 async function buildUserContent(values, prompt, withImages) {
   const images = withImages ? values.image || [] : [];
-  if (images.length === 0) return prompt;
+  const files = withImages ? values.file || [] : [];
+  if (images.length === 0 && files.length === 0) return prompt;
   const parts = [];
   if (prompt) parts.push({ type: "text", text: prompt });
   for (const img of images) parts.push(await imageToContent(img));
+  for (const f of files) parts.push(await fileToContent(f));
   return parts;
 }
 
@@ -146,10 +225,38 @@ async function applyRequestOptions(body, values) {
     if (["auto", "none", "required"].includes(v)) body.tool_choice = v;
     else body.tool_choice = { type: "function", function: { name: v } };
   }
+  if (values["no-parallel-tools"]) body.parallel_tool_calls = false;
+  if (values["logit-bias"]) body.logit_bias = await loadJsonOrFile(values["logit-bias"]);
   if (values.provider) body.provider = await loadJsonOrFile(values.provider);
+
+  const plugins = await buildPlugins(values);
+  if (plugins.length) body.plugins = plugins;
+
+  // cache_control breakpoints are attached to message content, so this must
+  // run after the messages are assembled.
+  if (values["cache-system"]) {
+    const sys = body.messages.find((m) => m.role === "system");
+    if (sys) sys.content = markCache(sys.content);
+  }
+  if (values["cache-user"]) {
+    for (let i = body.messages.length - 1; i >= 0; i--) {
+      if (body.messages[i].role === "user") {
+        body.messages[i].content = markCache(body.messages[i].content);
+        break;
+      }
+    }
+  }
+
+  if (values.extra) Object.assign(body, await loadJsonOrFile(values.extra));
 }
 
 async function buildBody(values, prompt) {
+  // --body is a full escape hatch: send it verbatim (still honors --extra).
+  if (values.body) {
+    const body = await loadJsonOrFile(values.body);
+    if (values.extra) Object.assign(body, await loadJsonOrFile(values.extra));
+    return body;
+  }
   const messages = [];
   if (values.system) messages.push({ role: "system", content: values.system });
   messages.push({
@@ -228,13 +335,30 @@ export async function chatCommand(argv) {
     "presence-penalty": { type: "string" },
     "repetition-penalty": { type: "string" },
     "min-p": { type: "string" },
+    "top-a": { type: "string" },
+    logprobs: { type: "boolean" },
+    "top-logprobs": { type: "string" },
+    "logit-bias": { type: "string" },
     "json-output": { type: "boolean" },
     schema: { type: "string" },
     tool: { type: "string", multiple: true },
     "tool-choice": { type: "string" },
+    "no-parallel-tools": { type: "boolean" },
     reasoning: { type: "string" },
+    "reasoning-max-tokens": { type: "string" },
+    "reasoning-exclude": { type: "boolean" },
     provider: { type: "string" },
+    web: { type: "boolean" },
+    "web-max-results": { type: "string" },
+    "web-search-prompt": { type: "string" },
+    "pdf-engine": { type: "string" },
+    plugins: { type: "string" },
     image: { type: "string", multiple: true },
+    file: { type: "string", multiple: true },
+    "cache-system": { type: "boolean" },
+    "cache-user": { type: "boolean" },
+    extra: { type: "string" },
+    body: { type: "string" },
     raw: { type: "boolean" },
     usage: { type: "boolean" },
     interactive: { type: "boolean", short: "i" },
