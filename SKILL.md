@@ -1,6 +1,6 @@
 ---
 name: openrouter-cli
-description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell - chat / messages / responses, embeddings, rerank, audio, video, model + provider discovery, generation lookup, credits, activity, and full key / guardrail / workspace management. Pass `--json` on every command for machine-parseable output.
+description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell - chat / messages / responses (with web search, PDF input, prompt caching, reasoning budgets, tools), embeddings, rerank, text-to-speech, speech-to-text, image + video generation, model + provider discovery, generation lookup, credits, activity, and full key / BYOK / guardrail / workspace / files / presets management. Pass `--json` on every command for machine-parseable output.
 ---
 
 # openrouter-cli skill
@@ -18,8 +18,12 @@ TRIGGER when the user asks to:
 - check credits, per-key spend, daily/weekly/monthly usage, or rate limits
 - inspect or audit a specific generation (`gen-...` id) - input, output, cost,
   latency, finish reason
+- run chat with web search, a PDF/file attachment, prompt caching, a reasoning
+  budget, tools, or structured output
+- generate an image, transcribe audio to text (STT), or synthesize speech (TTS)
 - create / list / disable / delete OpenRouter API keys programmatically
-- manage guardrails, workspaces, or organization members
+- manage BYOK provider integrations, guardrails, workspaces, files, presets, or
+  organization members
 - log in to OpenRouter from a fresh machine (OAuth PKCE in the browser)
 
 SKIP when the user is already using the OpenAI / Anthropic / Cohere SDKs
@@ -72,8 +76,8 @@ command automatically.
 
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
-| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `video`, `generation`, `credits`, `whoami` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `guardrails`, `workspaces`, `activity`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami` | OAuth (`openrouter login`) or paste from dashboard |
+| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
@@ -129,8 +133,26 @@ openrouter chat "What is 2+2?" -m openai/gpt-4o-mini \
   --tool '{"name":"add","parameters":{"type":"object","properties":{"a":{"type":"number"},"b":{"type":"number"}},"required":["a","b"]}}' \
   --tool-choice required --raw
 
-# Reasoning effort
+# Reasoning: effort level, an explicit token budget, or reason-but-hide
 openrouter chat "tricky question" -m anthropic/claude-sonnet-4.5 --reasoning high
+openrouter chat "prove it" -m openai/gpt-5-mini --reasoning-max-tokens 2000
+openrouter chat "quick" -m openai/gpt-5-mini --reasoning-exclude
+
+# Web search plugin (also works via the :online model suffix)
+openrouter chat "what shipped in the news today?" -m openai/gpt-4o-mini --web --web-max-results 3
+
+# Attach a PDF / file and parse it
+openrouter chat "summarize this" -m google/gemini-2.5-flash --file ./report.pdf --pdf-engine mistral-ocr
+
+# Prompt caching: mark the system (or user) prompt as a cache breakpoint
+openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat big-context.txt)" --cache-system
+
+# Sampling / output controls
+openrouter chat "..." -m openai/gpt-4o-mini --top-a 0.2 --logprobs --top-logprobs 5
+
+# Escape hatch: merge extra body fields, or send a fully-formed body
+openrouter chat "..." -m openai/gpt-4o-mini --extra '{"transforms":["middle-out"]}'
+openrouter chat --body @request.json
 
 # Provider routing / fallback models
 openrouter chat "..." -m primary/model --models fallback1/m,fallback2/m
@@ -141,13 +163,19 @@ openrouter chat -i -m openrouter/auto
 # Inside the REPL: /model <id>, /reset, /exit
 
 # Anthropic-format and OpenAI Responses API are also available
-openrouter messages "..." -m anthropic/claude-sonnet-4.5
-openrouter responses "..." -m openai/gpt-4o-mini
+openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking-budget 2000
+openrouter responses "..." -m openai/gpt-4o-mini --store --include reasoning.encrypted_content
 
-# Embeddings, rerank, TTS, video
+# Embeddings, rerank
 openrouter embed -m openai/text-embedding-3-small "hello" "world"
 openrouter rerank -m cohere/rerank-v3.5 --query "italian food" -d pizza -d sushi -d pasta
+
+# Text to speech (audio out) and speech to text (audio in)
 openrouter speech "Hello there" -m elevenlabs/eleven-turbo-v2 --voice alloy -o out.mp3
+openrouter transcribe ./clip.wav -m openai/gpt-4o-transcribe        # alias: stt
+
+# Image generation (writes image-0.png, ...); and video jobs
+openrouter image "a red bike on a beach" -m google/gemini-2.5-flash-image -o bike.png
 openrouter video create "a sunset over mountains" -m google/veo-3
 openrouter video wait <jobId> && openrouter video download <jobId> -o out.mp4
 ```
@@ -156,16 +184,22 @@ openrouter video wait <jobId> && openrouter video download <jobId> -o out.mp4
 
 ```bash
 # Browse / filter / sort the catalog
-openrouter models                                       # all (~370)
-openrouter models --filter sonnet --sort prompt         # cheapest first
+openrouter models                                       # all (~430)
+openrouter models --filter sonnet --sort prompt         # local sort, cheapest first
+openrouter models --order intelligence-high-to-low      # server-side ranking
 openrouter models --free                                # only :free models
-openrouter models --output-modalities image             # image-output models
+openrouter models --input-modalities image              # image-INPUT (vision) models
+openrouter models --output-modalities image             # image-OUTPUT models
 openrouter models --supported tools                     # filter by capability
 
-# Full detail for one model: pricing breakdown, architecture, supported params
+# Full detail for one model: pricing breakdown, architecture, supported params,
+# reasoning config, supported voices
 openrouter models show anthropic/claude-sonnet-4.5
 
-# Compare provider variants for one model - find the best one
+# Supported params + popularity analytics (p10/p50/p90 per parameter)
+openrouter models parameters openai/gpt-4o --provider openai
+
+# Compare provider variants for one model - find the best one (status column too)
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter models endpoints openai/gpt-4o-mini --sort latency
 openrouter models endpoints openai/gpt-4o-mini --sort prompt
@@ -173,6 +207,7 @@ openrouter models endpoints openai/gpt-4o-mini --sort prompt
 # Supporting metadata
 openrouter providers                                    # all providers
 openrouter embed models                                 # embedding models
+openrouter image models                                 # image gen models
 openrouter video models                                 # video gen models
 openrouter zdr                                          # ZDR-eligible endpoints
 ```
@@ -217,7 +252,7 @@ response - capture it then.
 ```bash
 openrouter guardrails list
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
-openrouter guardrails update <id> --limit-usd 10 --reset-interval daily
+openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --include-byok
 openrouter guardrails assign-key <id> <key-hash>
 openrouter guardrails delete <id>
 
@@ -227,6 +262,36 @@ openrouter workspaces add-members <id|slug> <user_id> [<user_id>...]
 openrouter workspaces delete <id|slug>
 
 openrouter org members
+```
+
+### BYOK provider integrations (management key required)
+
+Bring-your-own-key: register upstream provider secrets so OpenRouter routes
+through your own provider accounts.
+
+```bash
+openrouter byok list
+openrouter byok create --provider anthropic --api-key sk-ant-... --name "my anthropic" --fallback
+openrouter byok update <id> --allowed-models "anthropic/claude-sonnet-4.5" --disabled
+openrouter byok get <id>
+openrouter byok delete <id>
+```
+
+The `--api-key` flag is the upstream provider secret (never echoed back).
+
+### Files, presets (user key)
+
+```bash
+# Files - backing store for file/PDF inputs
+openrouter files upload ./report.pdf --purpose user_data
+openrouter files list
+openrouter files download <file_id> -o report.pdf
+openrouter files delete <file_id>
+
+# Presets - saved config profiles (read-only). Invoke via @preset/<slug> as a model.
+openrouter presets list
+openrouter presets get <slug>
+openrouter presets versions <slug>
 ```
 
 ### Raw escape hatch
