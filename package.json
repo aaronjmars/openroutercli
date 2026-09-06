@@ -4,8 +4,8 @@
   "description": "Command-line interface for the OpenRouter API. Built for humans and LLM agents.",
   "type": "module",
   "bin": {
-    "openrouter": "./bin/openrouter.js",
-    "or": "./bin/openrouter.js"
+    "openrouter": "bin/openrouter.js",
+    "or": "bin/openrouter.js"
   },
   "engines": {
     "node": ">=20"
