@@ -2,12 +2,55 @@ name: publish
 on:
   push:
     tags: ["v*"]
-permissions:
-  contents: read
-  id-token: write
 jobs:
-  publish:
+  test:
+    name: Lint & smoke test (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [20, 22]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+
+      - run: npm ci
+
+      - name: Syntax-check every tracked source file
+        run: |
+          set -euo pipefail
+          git ls-files '*.js' | while IFS= read -r f; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Smoke test - version resolves
+        run: |
+          set -euo pipefail
+          out="$(node bin/openrouter.js --version)"
+          echo "reported version: $out"
+          test -n "$out"
+
+      - name: Smoke test - help loads the full command graph
+        # `--help` imports every src/commands/* module via src/cli.js,
+        # so this fails on any broken import / ESM extension across the CLI.
+        run: node bin/openrouter.js --help > /dev/null
+
+      - name: Validate published package contents
+        run: npm pack --dry-run
+
+  publish:
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -16,5 +59,5 @@ jobs:
           registry-url: https://registry.npmjs.org
       # OIDC trusted publishing needs npm >= 11.5
       - run: npm install -g npm@latest
-      # Auth via OIDC trusted publishing (configured on npmjs.com) — no token
+      # Auth via OIDC trusted publishing (configured on npmjs.com) - no token
       - run: npm publish --provenance --access public
