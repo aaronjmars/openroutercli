@@ -18,7 +18,7 @@
 
 <p align="center">
   <strong>Every OpenRouter endpoint, on the command line - for humans and LLM agents</strong><br>
-  Browser-based OAuth login, full access to chat / messages / responses / embeddings / rerank / audio / video / models / providers / generations / credits / activity / keys / guardrails / workspaces, and a raw <code>request</code> escape hatch. <code>--json</code> on every command. Zero npm dependencies.
+  Browser-based OAuth login, inference, discovery, analytics, benchmarks, public datasets, Decisions, container files, account management, and a raw <code>request</code> escape hatch. <code>--json</code> on every command. Zero npm dependencies.
 </p>
 
 ---
@@ -78,6 +78,10 @@ and run `openrouter login --management`.
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
 | **Embeddings + rerank + TTS + video** | `embed`, `rerank`, `speech`, `video {create,wait,download}` - async video jobs poll-until-done with `video wait <jobId>`. |
 | **Model discovery with detail** | `models list` (filter, sort by price/context), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
+| **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
+| **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
+| **Structured decisions** | `decisions` calls the alpha Decisions API for typed choice, score, and yes/no outputs. |
+| **Hosted shell files** | `containers {list,get,download,promote}` retrieves and promotes files produced by OpenRouter's hosted shell tools. |
 | **Spend + activity + generations** | `credits` for balance, `whoami` for daily/weekly/monthly usage + rate limit, `keys get <hash>` for per-key spend, `activity --api-key-hash <hash>` for daily aggregates, `generation <id> [--content]` for full per-request metadata + input/output. |
 | **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR), `workspaces` (defaults + members), `org members`, `auth-code` to mint claim links. All require a management key. |
 | **Raw escape hatch** | `openrouter request <METHOD> <path> --body @file.json --query k=v --header k:v` - talk to any current or future endpoint without waiting for a CLI release. |
@@ -163,6 +167,10 @@ Endpoint coverage map:
 | `GET /key` | `openrouter whoami` |
 | `GET /credits` | `openrouter credits` |
 | `GET /activity` | `openrouter activity` |
+| `GET /analytics/meta` / `POST /analytics/query` | `openrouter analytics {meta,query}` |
+| `GET /benchmarks` | `openrouter benchmarks` |
+| `GET /classifications/task` | `openrouter classifications` |
+| `GET /datasets/app-rankings` / `GET /datasets/rankings-daily` / `GET /datasets/session-cost` | `openrouter datasets {apps,daily,session-cost}` |
 | `GET /models` | `openrouter models list` |
 | `GET /models/count` | `openrouter models count` |
 | `GET /models/user` | `openrouter models user` |
@@ -180,6 +188,8 @@ Endpoint coverage map:
 | `GET/POST/PATCH/DELETE /keys[/{hash}]` | `openrouter keys {list,get,create,update,delete}` |
 | `GET/POST/PATCH/DELETE /guardrails[/{id}]` + assignments | `openrouter guardrails ...` |
 | `GET/POST/PATCH/DELETE /workspaces[/{id}]` + members | `openrouter workspaces ...` |
+| `POST /api/alpha/decisions` | `openrouter decisions` |
+| `GET /containers/{id}/files[/{file}]` + content/promote | `openrouter containers ...` |
 | `GET /organization/members` | `openrouter org members` |
 | anything else | `openrouter request <METHOD> <path>` |
 
@@ -191,6 +201,7 @@ Endpoint coverage map:
 | `--base-url <url>` | `OPENROUTER_BASE_URL` | API base (default `https://openrouter.ai/api/v1`) |
 | `--referer <url>` | `OPENROUTER_REFERER` | `HTTP-Referer` header (your app URL) |
 | `--title <name>` | `OPENROUTER_TITLE` | `X-Title` header (your app name; appears on openrouter.ai) |
+| `--categories <csv>` | `OPENROUTER_CATEGORIES` | `X-OpenRouter-Categories` attribution header |
 | `--json` | - | JSON output, no streaming, no color |
 | `-q, --quiet` | - | Suppress informational stderr |
 | `-V, --version` | - | Print the version |

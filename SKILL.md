@@ -24,6 +24,9 @@ TRIGGER when the user asks to:
 - create / list / disable / delete OpenRouter API keys programmatically
 - manage BYOK provider integrations, guardrails, workspaces, files, presets, or
   organization members
+- inspect benchmarks, task classifications, and public usage datasets
+- query management analytics
+- submit structured Decisions requests or retrieve hosted-container files
 - log in to OpenRouter from a fresh machine (OAuth PKCE in the browser)
 
 SKIP when the user is already using the OpenAI / Anthropic / Cohere SDKs
@@ -76,8 +79,8 @@ command automatically.
 
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
-| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `containers` | OAuth (`openrouter login`) or paste from dashboard |
+| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
@@ -203,6 +206,12 @@ openrouter models parameters openai/gpt-4o --provider openai
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter models endpoints openai/gpt-4o-mini --sort latency
 openrouter models endpoints openai/gpt-4o-mini --sort prompt
+openrouter benchmarks --task-type coding --max-results 20
+openrouter classifications --window 7d
+openrouter datasets daily --period week --category programming
+openrouter analytics meta
+openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questions.json
+openrouter containers list <container-id>
 
 # Supporting metadata
 openrouter providers                                    # all providers
@@ -384,7 +393,8 @@ openrouter --json keys get <hash> | jq '.data | {usage, usage_daily, limit_remai
 | `-k, --key` | `OPENROUTER_API_KEY` (alias `OPENROUTER_KEY`) / `OPENROUTER_MANAGEMENT_KEY` | from config |
 | `--base-url` | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` |
 | `--referer` | `OPENROUTER_REFERER` | `https://github.com/aaronjmars/openroutercli` |
-| `--title` | `OPENROUTER_TITLE` | `openrouter-cli` |
+| `--title` | `OPENROUTER_TITLE` | `X-OpenRouter-Title` app display name |
+| `--categories` | `OPENROUTER_CATEGORIES` | `X-OpenRouter-Categories` attribution |
 | `--json` | - | off |
 | `-q, --quiet` | - | off |
 | `-V, --version` | - | prints version, exits |

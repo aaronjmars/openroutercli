@@ -10,12 +10,14 @@ export class APIError extends Error {
   }
 }
 
-function buildHeaders({ apiKey, referer, title, extra }) {
+function buildHeaders({ apiKey, referer, title, categories, extra }) {
   const headers = {
     Accept: "application/json",
     "HTTP-Referer": referer,
     "X-Title": title,
+    "X-OpenRouter-Title": title,
   };
+  if (categories) headers["X-OpenRouter-Categories"] = categories;
   if (apiKey) headers.Authorization = `Bearer ${apiKey}`;
   return { ...headers, ...(extra || {}) };
 }
@@ -23,6 +25,11 @@ function buildHeaders({ apiKey, referer, title, extra }) {
 function joinUrl(base, path) {
   if (/^https?:\/\//i.test(path)) return path;
   return base.replace(/\/$/, "") + (path.startsWith("/") ? path : "/" + path);
+}
+
+function joinOriginPath(base, rootPath, path) {
+  const origin = new URL(base).origin;
+  return joinUrl(origin + rootPath, path);
 }
 
 async function parseError(res) {
@@ -53,13 +60,15 @@ export async function api(method, path, opts = {}) {
     throw e;
   }
 
-  const url =
-    joinUrl(auth.baseUrl, path) +
-    (opts.query ? "?" + new URLSearchParams(opts.query).toString() : "");
+  const requestUrl = opts.rootPath
+    ? joinOriginPath(auth.baseUrl, opts.rootPath, path)
+    : joinUrl(auth.baseUrl, path);
+  const url = requestUrl + (opts.query ? "?" + new URLSearchParams(opts.query).toString() : "");
   const headers = buildHeaders({
     apiKey: auth.apiKey,
     referer: auth.referer,
     title: auth.title,
+    categories: auth.categories,
     extra: opts.headers,
   });
 

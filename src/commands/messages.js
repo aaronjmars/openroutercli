@@ -37,15 +37,23 @@ Options:
   -m, --model <id>         Model id (required)
   -s, --instructions <t>   System / instructions
       --max-tokens <n>     Sent as max_output_tokens
+      --max-tool-calls <n>
       --temperature <n>
       --top-p <n>
       --seed <n>
       --reasoning <effort> none|minimal|low|medium|high|xhigh|max
+      --models <csv>       Fallback models
+      --provider <json>    Provider routing options
+      --plugins <json>     Plugins array
+      --metadata <json>    Metadata object
+      --parallel-tools     Enable parallel tool calls
       --tool <json|@file>  Tool definition (repeatable)
       --tool-choice <v>    auto | none | required | <tool name>
       --include <csv>      Extra output fields to include
       --store              Persist the response server-side
       --previous-response-id <id>  Continue a stored response
+      --background         Run as a background response
+      --extra <json|@file> Extra fields merged into the request body
       --stream             Stream tokens (default when TTY)
       --no-stream          Disable streaming
       --raw                Print full JSON response
@@ -167,15 +175,23 @@ export async function responsesCommand(argv) {
     model: { type: "string", short: "m" },
     instructions: { type: "string", short: "s" },
     "max-tokens": { type: "string" },
+    "max-tool-calls": { type: "string" },
     temperature: { type: "string" },
     "top-p": { type: "string" },
     seed: { type: "string" },
     reasoning: { type: "string" },
+    models: { type: "string" },
+    provider: { type: "string" },
+    plugins: { type: "string" },
+    metadata: { type: "string" },
+    "parallel-tools": { type: "boolean" },
     tool: { type: "string", multiple: true },
     "tool-choice": { type: "string" },
     include: { type: "string" },
     store: { type: "boolean" },
     "previous-response-id": { type: "string" },
+    background: { type: "boolean" },
+    extra: { type: "string" },
     stream: { type: "boolean" },
     "no-stream": { type: "boolean" },
     raw: { type: "boolean" },
@@ -193,11 +209,21 @@ export async function responsesCommand(argv) {
     if (values.instructions) body.instructions = values.instructions;
     applyNumeric(body, values, {
       "max-tokens": "max_output_tokens",
+      "max-tool-calls": "max_tool_calls",
       temperature: "temperature",
       "top-p": "top_p",
       seed: "seed",
     });
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
+    if (values.models)
+      body.models = values.models
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean);
+    if (values.provider) body.provider = await loadBody(values.provider);
+    if (values.plugins) body.plugins = await loadBody(values.plugins);
+    if (values.metadata) body.metadata = await loadBody(values.metadata);
+    if (values["parallel-tools"]) body.parallel_tool_calls = true;
     if (values.tool && values.tool.length) {
       body.tools = [];
       for (const t of values.tool) body.tools.push(await loadBody(t));
@@ -210,6 +236,8 @@ export async function responsesCommand(argv) {
     if (values.include) body.include = values.include.split(",").map((s) => s.trim());
     if (values.store) body.store = true;
     if (values["previous-response-id"]) body.previous_response_id = values["previous-response-id"];
+    if (values.background) body.background = true;
+    if (values.extra) Object.assign(body, await loadBody(values.extra));
   }
 
   if (shouldStream(values)) {

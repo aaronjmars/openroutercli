@@ -7,6 +7,7 @@ const GLOBAL_OPTIONS = {
   "base-url": { type: "string" },
   referer: { type: "string" },
   title: { type: "string" },
+  categories: { type: "string" },
   json: { type: "boolean" },
   quiet: { type: "boolean", short: "q" },
   help: { type: "boolean", short: "h" },
@@ -52,6 +53,7 @@ export function authFromValues(values) {
   if (values["base-url"]) out.baseUrl = values["base-url"];
   if (values.referer) out.referer = values.referer;
   if (values.title) out.title = values.title;
+  if (values.categories) out.categories = values.categories;
   return out;
 }
 

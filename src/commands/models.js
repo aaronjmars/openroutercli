@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues } from "../args.js";
+import { parseArgs, authFromValues, numberOption } from "../args.js";
 import { api } from "../api.js";
 import { c, isJsonMode, outln, pricePerMillion, printResult, table } from "../output.js";
 
@@ -29,9 +29,20 @@ Options for list:
   --category <name>          programming|roleplay|marketing|marketing/seo|
                              technology|science|translation|legal|finance|
                              health|trivia|academia
+  --q <text>                 Server-side search by model name or slug
   --supported <param>        Filter by supported parameter (e.g. tools)
   --input-modalities <csv>   text,image,audio,file  (or "all")
-  --output-modalities <csv>  text,image,audio,embeddings  (or "all")
+  --output-modalities <csv>  text,image,embeddings,audio,video,rerank,
+                             decisions,speech,transcription  (or "all")
+  --context <tokens>         Minimum context length
+  --min-price <$/M>          Minimum prompt price
+  --max-price <$/M>          Maximum prompt price
+  --arch <family>            Model architecture/family
+  --model-authors <csv>      Model author slugs
+  --providers <csv>          Hosting provider names
+  --distillable <true|false> Filter by distillation capability
+  --zdr                      Only models with ZDR endpoints
+  --region <region>          Regional endpoint, currently eu
   --order <sort>             Server-side sort: most-popular|newest|top-weekly|
                              pricing-low-to-high|pricing-high-to-low|
                              context-high-to-low|throughput-high-to-low|
@@ -45,13 +56,70 @@ Options for list:
 // Server-side filters shared by `list` and `user`.
 function listQuery(values) {
   const query = {};
+  if (values.q) query.q = values.q;
   if (values.category) query.category = values.category;
   if (values.supported) query.supported_parameters = values.supported;
   if (values["input-modalities"]) query.input_modalities = values["input-modalities"];
   if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
   if (values.order) query.sort = values.order;
+  const numeric = [
+    ["context", "context"],
+    ["min-price", "min_price"],
+    ["max-price", "max_price"],
+    ["min-output-price", "min_output_price"],
+    ["max-output-price", "max_output_price"],
+    ["min-age-days", "min_age_days"],
+    ["max-age-days", "max_age_days"],
+    ["min-intelligence-index", "min_intelligence_index"],
+    ["max-intelligence-index", "max_intelligence_index"],
+    ["min-coding-index", "min_coding_index"],
+    ["max-coding-index", "max_coding_index"],
+    ["min-agentic-index", "min_agentic_index"],
+    ["max-agentic-index", "max_agentic_index"],
+    ["min-tool-success-rate", "min_tool_success_rate"],
+    ["max-tool-success-rate", "max_tool_success_rate"],
+  ];
+  for (const [flag, key] of numeric) {
+    if (values[flag] !== undefined) query[key] = numberOption(values[flag], `--${flag}`);
+  }
+  if (values.arch) query.arch = values.arch;
+  if (values["model-authors"]) query.model_authors = values["model-authors"];
+  if (values.providers) query.providers = values.providers;
+  if (values.distillable !== undefined) query.distillable = values.distillable;
+  if (values.zdr) query.zdr = "true";
+  if (values.region) query.region = values.region;
   return query;
 }
+
+const LIST_OPTIONS = {
+  q: { type: "string" },
+  category: { type: "string" },
+  supported: { type: "string" },
+  "input-modalities": { type: "string" },
+  "output-modalities": { type: "string" },
+  order: { type: "string" },
+  context: { type: "string" },
+  "min-price": { type: "string" },
+  "max-price": { type: "string" },
+  "min-output-price": { type: "string" },
+  "max-output-price": { type: "string" },
+  arch: { type: "string" },
+  "model-authors": { type: "string" },
+  providers: { type: "string" },
+  distillable: { type: "string" },
+  zdr: { type: "boolean" },
+  region: { type: "string" },
+  "min-age-days": { type: "string" },
+  "max-age-days": { type: "string" },
+  "min-intelligence-index": { type: "string" },
+  "max-intelligence-index": { type: "string" },
+  "min-coding-index": { type: "string" },
+  "max-coding-index": { type: "string" },
+  "min-agentic-index": { type: "string" },
+  "max-agentic-index": { type: "string" },
+  "min-tool-success-rate": { type: "string" },
+  "max-tool-success-rate": { type: "string" },
+};
 
 function listFormatter(data) {
   const rows = data.data || [];
@@ -306,12 +374,8 @@ export async function modelsCommand(argv) {
 
   if (sub === "user") {
     const { values } = parseArgs(rest, {
+      ...LIST_OPTIONS,
       workspace: { type: "string" },
-      category: { type: "string" },
-      supported: { type: "string" },
-      "input-modalities": { type: "string" },
-      "output-modalities": { type: "string" },
-      order: { type: "string" },
     });
     if (values.help) {
       process.stdout.write(
@@ -357,9 +421,14 @@ export async function modelsCommand(argv) {
   }
 
   if (sub === "count") {
-    const { values } = parseArgs(rest, {});
+    const { values } = parseArgs(rest, {
+      "output-modalities": { type: "string" },
+    });
+    const query = {};
+    if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
     const data = await api("GET", "/models/count", {
       auth: authFromValues(values),
+      query,
       requireAuth: false,
     });
     printResult(data, () => outln(JSON.stringify(data)));
@@ -367,11 +436,7 @@ export async function modelsCommand(argv) {
   }
 
   const { values } = parseArgs(rest, {
-    category: { type: "string" },
-    supported: { type: "string" },
-    "input-modalities": { type: "string" },
-    "output-modalities": { type: "string" },
-    order: { type: "string" },
+    ...LIST_OPTIONS,
     filter: { type: "string" },
     free: { type: "boolean" },
     sort: { type: "string" },

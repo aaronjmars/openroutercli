@@ -1,4 +1,4 @@
-import { parseArgs, authFromValues } from "../args.js";
+import { parseArgs, authFromValues, numberOption } from "../args.js";
 import { api } from "../api.js";
 import { outln, printResult, table, writeBinaryOutput } from "../output.js";
 
@@ -15,7 +15,21 @@ Subcommands:
 
 upload options:
   --purpose <p>    Purpose tag for the file (e.g. assistants, user_data)
+  --workspace <id> Workspace UUID (defaults to the key's workspace)
+  --provider <slug> Store/read via a BYOK provider
 `;
+
+const FILE_SCOPE = {
+  workspace: { type: "string" },
+  provider: { type: "string" },
+};
+
+function scopeQuery(values) {
+  const query = {};
+  if (values.workspace) query.workspace_id = values.workspace;
+  if (values.provider) query.provider = values.provider;
+  return Object.keys(query).length ? query : undefined;
+}
 
 export async function filesCommand(argv) {
   const sub = argv[0];
@@ -30,8 +44,23 @@ export async function filesCommand(argv) {
   }
 
   if (sub === "list") {
-    const { values } = parseArgs(rest, {});
-    const data = await api("GET", "/files", { auth: authFromValues(values) });
+    const { values } = parseArgs(rest, {
+      ...FILE_SCOPE,
+      limit: { type: "string" },
+      cursor: { type: "string" },
+      after: { type: "string" },
+      "after-id": { type: "string" },
+      "before-id": { type: "string" },
+      order: { type: "string" },
+    });
+    const query = scopeQuery(values);
+    if (values.limit !== undefined) query.limit = numberOption(values.limit, "--limit");
+    if (values.cursor) query.cursor = values.cursor;
+    if (values.after) query.after = values.after;
+    if (values["after-id"]) query.after_id = values["after-id"];
+    if (values["before-id"]) query.before_id = values["before-id"];
+    if (values.order) query.order = values.order;
+    const data = await api("GET", "/files", { auth: authFromValues(values), query });
     printResult(data, () => {
       const rows = data.data || [];
       table(rows, [
@@ -45,10 +74,11 @@ export async function filesCommand(argv) {
   }
 
   if (sub === "get") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, FILE_SCOPE);
     if (!positionals[0]) throw new Error("id required");
     const data = await api("GET", `/files/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
+      query: scopeQuery(values),
     });
     printResult(data);
     return 0;
@@ -56,6 +86,7 @@ export async function filesCommand(argv) {
 
   if (sub === "upload") {
     const { values, positionals } = parseArgs(rest, {
+      ...FILE_SCOPE,
       purpose: { type: "string" },
     });
     const path = positionals[0];
@@ -69,6 +100,7 @@ export async function filesCommand(argv) {
     const data = await api("POST", "/files", {
       auth: authFromValues(values),
       body: form,
+      query: scopeQuery(values),
     });
     printResult(data);
     return 0;
@@ -76,12 +108,14 @@ export async function filesCommand(argv) {
 
   if (sub === "download") {
     const { values, positionals } = parseArgs(rest, {
+      ...FILE_SCOPE,
       out: { type: "string", short: "o" },
     });
     if (!positionals[0]) throw new Error("id required");
     const bytes = await api("GET", `/files/${encodeURIComponent(positionals[0])}/content`, {
       auth: authFromValues(values),
       binary: true,
+      query: scopeQuery(values),
     });
     const out = values.out || positionals[0];
     await writeBinaryOutput(bytes, out);
@@ -89,10 +123,11 @@ export async function filesCommand(argv) {
   }
 
   if (sub === "delete") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, FILE_SCOPE);
     if (!positionals[0]) throw new Error("id required");
     const data = await api("DELETE", `/files/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
+      query: scopeQuery(values),
     });
     printResult(data, () => outln("deleted"));
     return 0;

@@ -19,6 +19,14 @@ import { requestCommand } from "./commands/request.js";
 import { guardrailsCommand } from "./commands/guardrails.js";
 import { workspacesCommand } from "./commands/workspaces.js";
 import { orgCommand, zdrCommand, authCodeCommand } from "./commands/misc.js";
+import {
+  analyticsCommand,
+  benchmarksCommand,
+  classificationsCommand,
+  datasetsCommand,
+} from "./commands/data.js";
+import { decisionsCommand } from "./commands/decisions.js";
+import { containersCommand } from "./commands/containers.js";
 import { DEFAULT_BASE_URL } from "./config.js";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -58,6 +66,13 @@ const COMMANDS = {
   org: orgCommand,
   zdr: zdrCommand,
   "auth-code": authCodeCommand,
+  analytics: analyticsCommand,
+  benchmarks: benchmarksCommand,
+  classifications: classificationsCommand,
+  datasets: datasetsCommand,
+  decisions: decisionsCommand,
+  decision: decisionsCommand,
+  containers: containersCommand,
   request: requestCommand,
 };
 
@@ -97,6 +112,12 @@ Discovery:
   generation <id> [--content]              Generation metadata or content
   credits                                  Remaining credits
   activity                                 Usage activity (management key)
+  benchmarks [options]                     Unified benchmark rankings
+  classifications [options]                Task classification market share
+  datasets <sub>                           Public usage datasets
+  decisions                                Structured Decisions API (alpha)
+  containers <sub>                         Hosted shell output files
+  files <sub>                               Workspace files
   zdr                                      Preview Zero-Data-Retention impact
 
 Management (require a management key):
@@ -104,7 +125,7 @@ Management (require a management key):
   byok <sub>             list / get / create / update / delete (provider integrations)
   guardrails <sub>       list / get / create / update / delete / assignments
   workspaces <sub>       list / get / create / update / delete / add-members / remove-members
-  files <sub>            list / get / upload / download / delete
+  analytics <sub>        meta / query (management key)
   org members            List organization members
   auth-code              Mint a PKCE authorization code so a user can claim a key
   request <METHOD> <path>  Raw authenticated request to any endpoint
@@ -114,6 +135,7 @@ Global options (work with all commands):
       --base-url <url>   Override API base URL (default: ${DEFAULT_BASE_URL})
       --referer <url>    HTTP-Referer header (set as your app's URL)
       --title <name>     X-Title header (your app name; appears on openrouter.ai)
+      --categories <csv> X-OpenRouter-Categories attribution (e.g. cli-agent)
       --json             Output JSON (also disables streaming, color, and prompts)
   -q, --quiet            Suppress informational stderr messages
   -V, --version          Print the version
@@ -124,7 +146,8 @@ Environment:
   OPENROUTER_MANAGEMENT_KEY  Default management/provisioning key
   OPENROUTER_BASE_URL        Default base URL
   OPENROUTER_REFERER         Default HTTP-Referer
-  OPENROUTER_TITLE           Default X-Title
+  OPENROUTER_TITLE           Default X-Title / X-OpenRouter-Title
+  OPENROUTER_CATEGORIES      Default X-OpenRouter-Categories
   NO_COLOR                   Disable ANSI colors (alias: OPENROUTER_NO_COLOR)
   OPENROUTER_DEBUG=1         Print stack traces on error
 
@@ -140,9 +163,18 @@ Version: ${VERSION}
 `;
 
 function preParseGlobals(argv) {
-  // --json/--quiet/--version work in any position; the rest are merged
-  // per-command in args.js.
+  // Global flags work in any position. Value-taking globals are moved after
+  // the command so `openrouter --key ... chat ...` still dispatches correctly.
   const out = [];
+  const globalTail = [];
+  const valueGlobals = new Set([
+    "--key",
+    "-k",
+    "--base-url",
+    "--referer",
+    "--title",
+    "--categories",
+  ]);
   let json = false;
   let quiet = false;
   let help = false;
@@ -152,12 +184,21 @@ function preParseGlobals(argv) {
     if (a === "--json") json = true;
     else if (a === "-q" || a === "--quiet") quiet = true;
     else if (a === "-V" || a === "--version") version = true;
-    else if (a === "-h" || a === "--help") {
+    else if (valueGlobals.has(a)) {
+      globalTail.push(a);
+      if (i + 1 < argv.length) globalTail.push(argv[++i]);
+    } else if (
+      ["--key", "--base-url", "--referer", "--title", "--categories"].some((flag) =>
+        a.startsWith(`${flag}=`),
+      )
+    ) {
+      globalTail.push(a);
+    } else if (a === "-h" || a === "--help") {
       help = true;
       out.push(a); // forward so subcommand help can also pick it up
     } else out.push(a);
   }
-  return { argv: out, json, quiet, help, version };
+  return { argv: [...out, ...globalTail], json, quiet, help, version };
 }
 
 export async function run(argv) {
