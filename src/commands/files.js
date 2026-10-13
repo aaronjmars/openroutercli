@@ -7,16 +7,28 @@ const HELP = `Usage: openrouter files <subcommand> [options]
 Manage files stored on OpenRouter (backing store for file/PDF inputs).
 
 Subcommands:
-  list                       List uploaded files
+  list [options]             List uploaded files
   get <id>                   Get one file's metadata
   upload <path> [options]    Upload a file (multipart)
   download <id> [-o file]    Download file content
   delete <id>                Delete a file
 
+Every subcommand takes:
+  --workspace <id>  Workspace UUID (defaults to the key's default workspace)
+  --provider <slug> Store/read on your own provider account: openai | anthropic
+                    (uses your BYOK key; omit for OpenRouter storage)
+
 upload options:
-  --purpose <p>    Purpose tag for the file (e.g. assistants, user_data)
-  --workspace <id> Workspace UUID (defaults to the key's workspace)
-  --provider <slug> Store/read via a BYOK provider
+  --purpose <p>     Ignored: the API no longer takes a purpose (kept so old
+                    scripts still run)
+
+list options:
+  --limit <n>       Max files (1-1000)
+  --cursor <c>      Cursor from a previous page
+  --after <id>      OpenAI-style: list after this id
+  --after-id <id>   Anthropic-style: list after this id
+  --before-id <id>  Anthropic-style reverse cursor (not on OpenRouter storage)
+  --order <o>       asc (only asc on OpenRouter storage)
 `;
 
 const FILE_SCOPE = {
@@ -53,7 +65,7 @@ export async function filesCommand(argv) {
       "before-id": { type: "string" },
       order: { type: "string" },
     });
-    const query = scopeQuery(values);
+    const query = scopeQuery(values) || {};
     if (values.limit !== undefined) query.limit = numberOption(values.limit, "--limit");
     if (values.cursor) query.cursor = values.cursor;
     if (values.after) query.after = values.after;
@@ -66,9 +78,13 @@ export async function filesCommand(argv) {
       table(rows, [
         { label: "id", value: (f) => f.id || "" },
         { label: "filename", value: (f) => f.filename || f.name || "" },
-        { label: "bytes", value: (f) => f.bytes ?? f.size ?? "" },
-        { label: "purpose", value: (f) => f.purpose || "" },
+        { label: "bytes", value: (f) => f.size_bytes ?? f.bytes ?? f.size ?? "" },
+        { label: "type", value: (f) => f.mime_type || f.purpose || "" },
+        { label: "created", value: (f) => f.created_at || "" },
       ]);
+      if (data.has_more) {
+        outln(data.cursor ? `more: --cursor ${data.cursor}` : `more: --after ${data.last_id}`);
+      }
     });
     return 0;
   }
@@ -96,7 +112,7 @@ export async function filesCommand(argv) {
     const filename = path.split("/").pop() || "file";
     const form = new FormData();
     form.append("file", new Blob([buf]), filename);
-    if (values.purpose) form.append("purpose", values.purpose);
+    // --purpose is still accepted but not sent: the multipart body is file only.
     const data = await api("POST", "/files", {
       auth: authFromValues(values),
       body: form,

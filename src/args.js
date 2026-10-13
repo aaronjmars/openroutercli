@@ -69,3 +69,51 @@ export function shouldStream(values) {
     values.stream || (!values["no-stream"] && !values.raw && !isJsonMode() && process.stdout.isTTY)
   );
 }
+
+// JSON from an inline string or `@file`. Errors name the flag.
+export async function loadJson(value, flag) {
+  if (value == null) return undefined;
+  const text = value.startsWith("@")
+    ? await (async () => {
+        const { readFile } = await import("node:fs/promises");
+        return readFile(value.slice(1), "utf8");
+      })()
+    : value;
+  try {
+    return JSON.parse(text);
+  } catch (err) {
+    throw new Error(`Invalid JSON for ${flag}: ${err.message}`);
+  }
+}
+
+// Request fields shared by inference endpoints. session_id / user / trace are
+// on every one; service_tier only on chat, messages and responses (media
+// commands use MEDIA_FIELD_OPTIONS below).
+export const REQUEST_FIELD_OPTIONS = {
+  "session-id": { type: "string" },
+  user: { type: "string" },
+  trace: { type: "string" },
+  "service-tier": { type: "string" },
+};
+
+export const REQUEST_FIELD_HELP = `      --session-id <id>    Group related requests into one session (max 256 chars)
+      --user <id>          Your end-user id (abuse tracking, per-user analytics)
+      --trace <json|@file> Observability trace: trace_id, trace_name, span_name,
+                           generation_name, parent_span_id
+      --service-tier <t>   auto | default | fast | flex | priority | scale | ultrafast
+`;
+
+export async function applyRequestFields(body, values) {
+  if (values["session-id"]) body.session_id = values["session-id"];
+  if (values.user) body.user = values.user;
+  if (values.trace) body.trace = await loadJson(values.trace, "--trace");
+  if (values["service-tier"]) body.service_tier = values["service-tier"];
+  return body;
+}
+
+// service_tier is not part of the media request schemas (images, videos,
+// speech, transcription, embeddings, rerank), so those commands drop it.
+export const MEDIA_FIELD_OPTIONS = Object.fromEntries(
+  Object.entries(REQUEST_FIELD_OPTIONS).filter(([name]) => name !== "service-tier"),
+);
+export const MEDIA_FIELD_HELP = REQUEST_FIELD_HELP.replace(/^.*--service-tier.*\n/m, "");

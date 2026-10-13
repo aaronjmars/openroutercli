@@ -1,5 +1,11 @@
-import { parseArgs, authFromValues, numberOption } from "../args.js";
-import { api } from "../api.js";
+import {
+  parseArgs,
+  authFromValues,
+  numberOption,
+  PAGINATION_OPTIONS,
+  paginationQuery,
+} from "../args.js";
+import { api, APIError } from "../api.js";
 import { c, isJsonMode, outln, pricePerMillion, printResult, table } from "../output.js";
 
 const ENDPOINT_SORT_FIELDS = ["throughput", "latency", "prompt", "completion", "uptime", "context"];
@@ -21,8 +27,10 @@ Subcommands:
                              architecture, supported params, top provider).
                              Aliases: info, detail
   endpoints <author>/<slug>  List endpoints (provider variants) for a model
-  parameters <author>/<slug> Supported params + popularity analytics (p10/p50/p90)
-  user                       Models filtered by your workspace preferences
+  parameters <author>/<slug> Supported request parameters for a model
+                             (undocumented endpoint, may change)
+  user                       Models filtered by your provider preferences,
+                             privacy settings and guardrails (API key)
   count                      Get the total model count
 
 Options for list:
@@ -42,7 +50,7 @@ Options for list:
   --providers <csv>          Hosting provider names
   --distillable <true|false> Filter by distillation capability
   --zdr                      Only models with ZDR endpoints
-  --region <region>          Regional endpoint, currently eu
+  --region <region>          Only models with endpoints in a data region: eu | us
   --order <sort>             Server-side sort: most-popular|newest|top-weekly|
                              pricing-low-to-high|pricing-high-to-low|
                              context-high-to-low|throughput-high-to-low|
@@ -229,6 +237,26 @@ function renderModelDetail(m) {
     outln(c.dim(`per_request_limits: ${JSON.stringify(m.per_request_limits)}`));
 }
 
+// GET /model/{author}/{slug}: one model by id, no key needed. Returns null
+// when the id is unknown so the caller can fall back to a fuzzy match.
+async function fetchModel(id, auth) {
+  const slash = id.indexOf("/");
+  const author = encodeURIComponent(id.slice(0, slash));
+  const slug = encodeURIComponent(id.slice(slash + 1)).replace(/%3A/gi, ":");
+  try {
+    const res = await api("GET", `/model/${author}/${slug}`, { auth, requireAuth: false });
+    return (res && res.data) || null;
+  } catch (err) {
+    if (err instanceof APIError && (err.status === 404 || err.status === 400)) return null;
+    throw err;
+  }
+}
+
+function nativeTools(e) {
+  const keys = Object.keys(e.native_tools || {});
+  return keys.map((k) => k.replace(/^openrouter:/, "")).join(",");
+}
+
 export async function modelsCommand(argv) {
   // A leading non-flag token is the subcommand; otherwise default to list
   // and keep argv intact so the list branch still sees its flags.
@@ -239,13 +267,30 @@ export async function modelsCommand(argv) {
     const { values, positionals } = parseArgs(rest, {});
     if (values.help || positionals.length === 0) {
       process.stdout.write(
-        "Usage: openrouter models show <model-id>\n\nShow full details (pricing, architecture, capabilities) for one model.\n",
+        "Usage: openrouter models show <model-id>\n\n" +
+          "Show full details (pricing, architecture, capabilities) for one model.\n" +
+          "An <author>/<slug> id (variants like :free too) is looked up directly, which\n" +
+          "also finds image/video models the default list hides. Anything else is\n" +
+          "matched against model ids and names. No API key needed.\n",
       );
       return values.help ? 0 : 1;
     }
+    // An <author>/<slug> id resolves directly (aliases, :variants, and image
+    // or video models the default list hides). A miss falls back to the
+    // fuzzy match over the full list below.
+    const direct = positionals[0].includes("/")
+      ? await fetchModel(positionals[0], authFromValues(values))
+      : null;
+    if (direct) {
+      if (isJsonMode()) printResult(direct);
+      else renderModelDetail(direct);
+      return 0;
+    }
     const target = positionals[0].toLowerCase();
+    // output_modalities=all so image/video/audio models are matchable too.
     const data = await api("GET", "/models", {
       auth: authFromValues(values),
+      query: { output_modalities: "all" },
       requireAuth: false,
     });
     const rows = data.data || [];
@@ -367,24 +412,46 @@ export async function modelsCommand(argv) {
             e.uptime_last_30m != null ? Number(e.uptime_last_30m).toFixed(1) + "%" : "",
         },
         { label: "quant", value: (e) => e.quantization || "" },
+        { label: "native tools", value: nativeTools },
       ]);
     });
     return 0;
   }
 
   if (sub === "user") {
-    const { values } = parseArgs(rest, {
-      ...LIST_OPTIONS,
-      workspace: { type: "string" },
-    });
+    let parsed;
+    try {
+      parsed = parseArgs(rest, {
+        ...PAGINATION_OPTIONS,
+        "output-modalities": { type: "string" },
+      });
+    } catch (err) {
+      // `models user` used to forward every list filter; the endpoint only
+      // takes these three, so say so instead of a bare "Unknown option".
+      if (err.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
+        throw new Error(
+          `${err.message.split(".")[0]}. models user only supports --output-modalities, --limit and --offset; use \`openrouter models list\` for search filters.`,
+        );
+      }
+      throw err;
+    }
+    const { values } = parsed;
     if (values.help) {
       process.stdout.write(
-        "Usage: openrouter models user [--workspace <id|slug>] [--category <c>] [--supported <p>] [--input-modalities <csv>] [--output-modalities <csv>] [--order <sort>]\n\nList models filtered by your workspace provider preferences, privacy, and guardrails.\n",
+        "Usage: openrouter models user [--output-modalities <csv>] [--limit <n>] [--offset <n>]\n\n" +
+          "List models filtered by your provider preferences, privacy settings, and\n" +
+          "guardrails. Uses your API key; on a regional host (eu/us) only models that\n" +
+          "can route in-region are returned.\n\n" +
+          "Options:\n" +
+          "  --output-modalities <csv>  text,image,embeddings,audio,video,rerank,decisions,\n" +
+          '                             speech,transcription (or "all"). Default: text\n' +
+          "  --limit <n>                Max rows (1-1000). Omit limit and offset for all\n" +
+          "  --offset <n>               Rows to skip\n",
       );
       return 0;
     }
-    const query = listQuery(values);
-    if (values.workspace) query.workspace_id = values.workspace;
+    const query = paginationQuery(values);
+    if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
     const data = await api("GET", "/models/user", {
       auth: authFromValues(values),
       query,
@@ -400,8 +467,9 @@ export async function modelsCommand(argv) {
     if (values.help || positionals.length === 0) {
       process.stdout.write(
         "Usage: openrouter models parameters <author>/<slug> [--provider <slug>]\n\n" +
-          "Show a model's supported parameters plus popularity analytics\n" +
-          "(p10/p50/p90 per parameter). Optionally scope to one provider.\n",
+          "Show the request parameters a model supports. Optionally scope to one provider.\n" +
+          "Note: /parameters is not in the public API spec; it works today but may change.\n" +
+          "For the documented list see `openrouter models show <id>` (supported_parameters).\n",
       );
       return values.help ? 0 : 1;
     }
@@ -416,7 +484,11 @@ export async function modelsCommand(argv) {
       auth: authFromValues(values),
       query,
     });
-    printResult(data);
+    printResult(data, () => {
+      const d = data.data || data;
+      outln(d.model || target);
+      for (const p of d.supported_parameters || []) outln(`  ${p}`);
+    });
     return 0;
   }
 
@@ -503,6 +575,7 @@ export async function modelsCommand(argv) {
   }
 
   const filtered = { ...data, data: rows };
+  if (values.filter || values.free) filtered.total_count = rows.length;
   printResult(filtered, () => listFormatter(filtered));
   return 0;
 }
