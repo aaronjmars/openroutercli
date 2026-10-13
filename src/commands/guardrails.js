@@ -4,6 +4,7 @@ import {
   PAGINATION_OPTIONS,
   paginationQuery,
   numberOption,
+  loadJson,
 } from "../args.js";
 import { api } from "../api.js";
 import { outln, printResult, table } from "../output.js";
@@ -13,32 +14,82 @@ const HELP = `Usage: openrouter guardrails <subcommand> [options]
 Manage guardrails (requires a management key).
 
 Subcommands:
-  list [--offset <n>] [--limit <n>]   List guardrails
+  list [--offset <n>] [--limit <n>] [--workspace <uuid>]
+                                      List guardrails (default workspace unless
+                                      --workspace is given)
   get <id>                            Get one
   create <name> [options]             Create
   update <id> [options]               Update
   delete <id>                         Delete
-  assignments [--keys|--members]      List all assignments
+  assignments [--keys|--members]      List all assignments (--offset/--limit)
   assign-key <id> <hash>...           Assign API keys to a guardrail
   unassign-key <id> <hash>...         Unassign API keys
   assign-member <id> <user>...        Assign org members
   unassign-member <id> <user>...      Unassign members
   key-assignments <id>                List key assignments for a guardrail
   member-assignments <id>             List member assignments for a guardrail
+                                      (both take --offset/--limit)
 
 create / update options:
   --name <name>             (update only)
   --description <text>
-  --limit-usd <n>
+  --limit-usd <n>           On create, pass together with --reset-interval
   --reset-interval <p>      daily | weekly | monthly | null
-  --enforce-zdr / --no-zdr
+  --enforce-zdr / --no-zdr  ZDR for every provider (deprecated API field)
+  --zdr-providers <csv>     Enforce ZDR only for: anthropic,openai,google,xai,other
   --allowed-models <csv>
   --ignored-models <csv>
   --allowed-providers <csv>
   --ignored-providers <csv>
+  --regions <csv>           Allowed data regions: global,europe,us ("" clears)
+  --content-filters <json|@file>  Custom regex filters, e.g.
+                            [{"pattern":"sk-[a-z0-9]{48}","action":"redact","label":"[KEY]"}]
+                            action: redact | block | flag. "null" removes them.
+  --builtin-filters <spec>  Builtin filters as JSON/@file
+                            ([{"slug":"email","action":"redact"}]) or shorthand
+                            email:redact,secrets:block. Slugs: email, phone, ssn,
+                            credit-card, ip-address, secrets, person-name, address,
+                            regex-prompt-injection. "null" removes them.
+  --free-publication / --no-free-publication  Allow free endpoints that publish prompts
+  --free-training / --no-free-training        Allow free endpoints that train on data
+  --paid-training / --no-paid-training        Allow paid endpoints that train on data
   --include-byok / --no-include-byok   Count BYOK spend toward the budget
   --workspace <uuid>        (create only)
+  --extra <json|@file>      Extra body fields, merged last (e.g. enforce_zdr_xai:false)
 `;
+
+const ZDR_PROVIDERS = ["anthropic", "openai", "google", "xai", "other"];
+const REGIONS = ["global", "europe", "us"];
+const MAX_KEY_HASHES = 500;
+
+function toggle(values, on, off) {
+  if (values[on] && values[off]) throw new Error(`Pass only one of --${on} or --${off}.`);
+  if (values[on]) return true;
+  if (values[off]) return false;
+  return undefined;
+}
+
+// JSON array (inline or @file), or the literal "null" to remove the field.
+async function jsonArray(value, flag) {
+  if (value === undefined) return undefined;
+  if (value === "null") return null;
+  const parsed = await loadJson(value, flag);
+  if (!Array.isArray(parsed)) throw new Error(`${flag} must be a JSON array`);
+  return parsed;
+}
+
+async function builtinFilters(value) {
+  if (value === undefined || value === "null" || /^\s*[[@]/.test(value)) {
+    return jsonArray(value, "--builtin-filters");
+  }
+  return csv(value).map((entry) => {
+    const [slug, action] = entry.split(":");
+    if (!slug || !action) {
+      throw new Error(`--builtin-filters entry "${entry}" must be slug:action (e.g. email:redact)`);
+    }
+    return { slug, action };
+  });
+}
 
 function csv(v) {
   if (v == null) return undefined;
@@ -49,7 +100,7 @@ function csv(v) {
     .filter(Boolean);
 }
 
-function buildBody(values) {
+async function buildBody(values) {
   const body = {};
   if (values.description !== undefined) body.description = values.description;
   if (values["limit-usd"] !== undefined)
@@ -67,6 +118,45 @@ function buildBody(values) {
     body.ignored_providers = csv(values["ignored-providers"]);
   if (values["include-byok"]) body.include_byok_in_budgets = true;
   if (values["no-include-byok"]) body.include_byok_in_budgets = false;
+  if (values["zdr-providers"] !== undefined) {
+    for (const p of csv(values["zdr-providers"]) || []) {
+      if (!ZDR_PROVIDERS.includes(p)) {
+        throw new Error(
+          `Unknown --zdr-providers entry "${p}". Expected: ${ZDR_PROVIDERS.join(", ")}`,
+        );
+      }
+      body[`enforce_zdr_${p}`] = true;
+    }
+  }
+  if (values.regions !== undefined) {
+    const regions = csv(values.regions);
+    for (const r of regions || []) {
+      if (!REGIONS.includes(r)) {
+        throw new Error(`Unknown region "${r}". Expected: ${REGIONS.join(", ")}`);
+      }
+    }
+    body.allowed_data_regions = regions;
+  }
+  const filters = await jsonArray(values["content-filters"], "--content-filters");
+  if (filters !== undefined) body.content_filters = filters;
+  const builtins = await builtinFilters(values["builtin-filters"]);
+  if (builtins !== undefined) body.content_filter_builtins = builtins;
+  const toggles = [
+    ["enable_free_model_publication", "free-publication"],
+    ["enable_free_model_training", "free-training"],
+    ["enable_paid_model_training", "paid-training"],
+  ];
+  for (const [field, flag] of toggles) {
+    const v = toggle(values, flag, `no-${flag}`);
+    if (v !== undefined) body[field] = v;
+  }
+  const extra = await loadJson(values.extra, "--extra");
+  if (extra !== undefined) {
+    if (!extra || typeof extra !== "object" || Array.isArray(extra)) {
+      throw new Error("--extra must be a JSON object");
+    }
+    Object.assign(body, extra);
+  }
   return body;
 }
 
@@ -82,6 +172,17 @@ const COMMON_FIELDS = {
   "ignored-providers": { type: "string" },
   "include-byok": { type: "boolean" },
   "no-include-byok": { type: "boolean" },
+  "zdr-providers": { type: "string" },
+  regions: { type: "string" },
+  "content-filters": { type: "string" },
+  "builtin-filters": { type: "string" },
+  "free-publication": { type: "boolean" },
+  "no-free-publication": { type: "boolean" },
+  "free-training": { type: "boolean" },
+  "no-free-training": { type: "boolean" },
+  "paid-training": { type: "boolean" },
+  "no-paid-training": { type: "boolean" },
+  extra: { type: "string" },
 };
 
 export async function guardrailsCommand(argv) {
@@ -98,8 +199,9 @@ export async function guardrailsCommand(argv) {
   }
 
   if (sub === "list") {
-    const { values } = parseArgs(rest, PAGINATION_OPTIONS);
+    const { values } = parseArgs(rest, { ...PAGINATION_OPTIONS, workspace: { type: "string" } });
     const query = paginationQuery(values);
+    if (values.workspace) query.workspace_id = values.workspace;
     const data = await api("GET", "/guardrails", {
       auth: authFromValues(values),
       requiresManagement: true,
@@ -112,7 +214,14 @@ export async function guardrailsCommand(argv) {
         { label: "name", value: (g) => g.name },
         { label: "limit_usd", value: (g) => g.limit_usd ?? "" },
         { label: "reset", value: (g) => g.reset_interval ?? "" },
-        { label: "zdr", value: (g) => (g.enforce_zdr ? "yes" : "") },
+        {
+          label: "zdr",
+          value: (g) => {
+            if (g.enforce_zdr) return "all";
+            return ZDR_PROVIDERS.filter((p) => g[`enforce_zdr_${p}`]).join(",");
+          },
+        },
+        { label: "regions", value: (g) => (g.allowed_data_regions || []).join(",") },
       ]);
     });
     return 0;
@@ -136,8 +245,11 @@ export async function guardrailsCommand(argv) {
     });
     const name = positionals[0];
     if (!name) throw new Error("name required");
-    const body = { name, ...buildBody(values) };
+    const body = { name, ...(await buildBody(values)) };
     if (values.workspace) body.workspace_id = values.workspace;
+    if ("limit_usd" in body !== "reset_interval" in body) {
+      throw new Error("--limit-usd and --reset-interval must be passed together on create.");
+    }
     const data = await api("POST", "/guardrails", {
       auth: authFromValues(values),
       requiresManagement: true,
@@ -153,7 +265,7 @@ export async function guardrailsCommand(argv) {
       name: { type: "string" },
     });
     if (!positionals[0]) throw new Error("id required");
-    const body = buildBody(values);
+    const body = await buildBody(values);
     if (values.name) body.name = values.name;
     const data = await api("PATCH", `/guardrails/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
@@ -177,6 +289,7 @@ export async function guardrailsCommand(argv) {
 
   if (sub === "assignments") {
     const { values } = parseArgs(rest, {
+      ...PAGINATION_OPTIONS,
       keys: { type: "boolean" },
       members: { type: "boolean" },
     });
@@ -189,13 +302,14 @@ export async function guardrailsCommand(argv) {
     const data = await api("GET", path, {
       auth: authFromValues(values),
       requiresManagement: true,
+      query: paginationQuery(values),
     });
     printResult(data);
     return 0;
   }
 
   if (sub === "key-assignments" || sub === "member-assignments") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, PAGINATION_OPTIONS);
     if (!positionals[0]) throw new Error("id required");
     const path =
       sub === "key-assignments"
@@ -204,6 +318,7 @@ export async function guardrailsCommand(argv) {
     const data = await api("GET", path, {
       auth: authFromValues(values),
       requiresManagement: true,
+      query: paginationQuery(values),
     });
     printResult(data);
     return 0;
@@ -214,6 +329,11 @@ export async function guardrailsCommand(argv) {
     if (positionals.length < 2) throw new Error("Usage: <id> <hash>...");
     const id = positionals[0];
     const hashes = positionals.slice(1);
+    if (hashes.length > MAX_KEY_HASHES) {
+      throw new Error(
+        `Too many key hashes (${hashes.length}); the API takes at most ${MAX_KEY_HASHES} per call. Split into batches.`,
+      );
+    }
     const path =
       sub === "assign-key"
         ? `/guardrails/${encodeURIComponent(id)}/assignments/keys`
@@ -239,7 +359,7 @@ export async function guardrailsCommand(argv) {
     const data = await api("POST", path, {
       auth: authFromValues(values),
       requiresManagement: true,
-      body: { user_ids: userIds },
+      body: { member_user_ids: userIds },
     });
     printResult(data);
     return 0;

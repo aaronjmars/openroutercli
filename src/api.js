@@ -47,6 +47,17 @@ async function parseError(res) {
   });
 }
 
+// Array values repeat the key (`status=a&status=b`), the form list filters expect.
+function buildQuery(query) {
+  const params = new URLSearchParams();
+  for (const [k, v] of Object.entries(query)) {
+    if (v === undefined || v === null) continue;
+    if (Array.isArray(v)) for (const item of v) params.append(k, item);
+    else params.append(k, v);
+  }
+  return params.toString();
+}
+
 export async function api(method, path, opts = {}) {
   const authOpts = { ...(opts.auth || {}) };
   if (opts.requiresManagement) authOpts.requiresManagement = true;
@@ -63,7 +74,7 @@ export async function api(method, path, opts = {}) {
   const requestUrl = opts.rootPath
     ? joinOriginPath(auth.baseUrl, opts.rootPath, path)
     : joinUrl(auth.baseUrl, path);
-  const url = requestUrl + (opts.query ? "?" + new URLSearchParams(opts.query).toString() : "");
+  const url = requestUrl + (opts.query ? "?" + buildQuery(opts.query) : "");
   const headers = buildHeaders({
     apiKey: auth.apiKey,
     referer: auth.referer,

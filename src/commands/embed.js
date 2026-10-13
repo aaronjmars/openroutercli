@@ -1,5 +1,15 @@
-import { parseArgs, authFromValues, numberOption, readStdinIfPiped } from "../args.js";
+import {
+  parseArgs,
+  authFromValues,
+  numberOption,
+  readStdinIfPiped,
+  loadJson,
+  applyRequestFields,
+  MEDIA_FIELD_HELP,
+  MEDIA_FIELD_OPTIONS,
+} from "../args.js";
 import { api } from "../api.js";
+import { mediaUrl } from "../media.js";
 import { outln, pricePerMillion, printResult, table } from "../output.js";
 
 const HELP = `Usage: openrouter embed [text...] [options]
@@ -10,11 +20,14 @@ Generate embeddings, or list embedding models.
 Options:
   -m, --model <id>      Embedding model id (required for inference)
   -i, --input <text>    Input string (repeatable)
-      --input-type <t>  e.g. query | document
+      --image <url|path> Image to embed (repeatable, multimodal models); each is
+                        its own input. Local files are sent as data URLs.
+      --input-type <t>  e.g. search_query | search_document
       --dimensions <n>
       --encoding <fmt>  float | base64
-      --provider <json> Provider routing as JSON
-`;
+      --provider <json|@file> Provider routing as JSON
+      --extra <json|@file>    Extra fields merged into the body (last)
+${MEDIA_FIELD_HELP}`;
 
 export async function embedCommand(argv) {
   if (argv[0] === "models") {
@@ -47,8 +60,11 @@ export async function embedCommand(argv) {
     input: { type: "string", short: "i", multiple: true },
     "input-type": { type: "string" },
     dimensions: { type: "string" },
+    image: { type: "string", multiple: true },
     encoding: { type: "string" },
     provider: { type: "string" },
+    extra: { type: "string" },
+    ...MEDIA_FIELD_OPTIONS,
   });
   if (values.help) {
     process.stdout.write(HELP);
@@ -59,16 +75,25 @@ export async function embedCommand(argv) {
   const inputs = [...(values.input || []), ...positionals];
   const piped = await readStdinIfPiped();
   if (piped) inputs.push(piped);
-  if (!inputs.length) throw new Error("No input. Pass text, use --input, or pipe stdin.");
+  const images = values.image || [];
+  if (!inputs.length && !images.length)
+    throw new Error("No input. Pass text, use --input or --image, or pipe stdin.");
 
-  const body = {
-    model: values.model,
-    input: inputs.length === 1 ? inputs[0] : inputs,
-  };
+  let input = inputs.length === 1 ? inputs[0] : inputs;
+  if (images.length) {
+    // Multimodal form: one { content: [part] } item per text or image.
+    input = inputs.map((text) => ({ content: [{ type: "text", text }] }));
+    for (const img of images) {
+      input.push({ content: [{ type: "image_url", image_url: { url: await mediaUrl(img) } }] });
+    }
+  }
+  const body = { model: values.model, input };
   if (values["input-type"]) body.input_type = values["input-type"];
   if (values.dimensions) body.dimensions = numberOption(values.dimensions, "--dimensions");
   if (values.encoding) body.encoding_format = values.encoding;
-  if (values.provider) body.provider = JSON.parse(values.provider);
+  if (values.provider) body.provider = await loadJson(values.provider, "--provider");
+  await applyRequestFields(body, values);
+  if (values.extra) Object.assign(body, await loadJson(values.extra, "--extra"));
 
   const data = await api("POST", "/embeddings", {
     auth: authFromValues(values),

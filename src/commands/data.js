@@ -131,9 +131,9 @@ const DATASETS_HELP = `Usage: openrouter datasets <subcommand> [options]
 Public OpenRouter usage datasets.
 
 Subcommands:
-  apps [options]          Top public apps by token usage
-  daily [options]         Daily/weekly/monthly model rankings
-  session-cost [options] Cost per session by harness and model
+  apps [options]           Top public apps by token usage
+  daily [options]          Daily/weekly/monthly model rankings
+  session-cost [options]   Cost per session by harness and model
 
 apps options:
   --category <name> --subcategory <name> --sort popular|trending

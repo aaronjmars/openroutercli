@@ -1,6 +1,6 @@
 ---
 name: openrouter-cli
-description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell - chat / messages / responses (with web search, PDF input, prompt caching, reasoning budgets, tools), embeddings, rerank, text-to-speech, speech-to-text, image + video generation, model + provider discovery, generation lookup, credits, activity, and full key / BYOK / guardrail / workspace / files / presets management. Pass `--json` on every command for machine-parseable output.
+description: Use the `openrouter` CLI to call any OpenRouter API endpoint from the shell - chat / messages / responses (with server tools, web search, PDF input, prompt caching, reasoning budgets, tools, alignment rules), batches, embeddings, rerank, text-to-speech, speech-to-text, image + video generation, model + provider discovery, generation lookup, credits, activity, and full key / BYOK / guardrail / workspace (budgets) / observability / files / presets management. Pass `--json` on every command for machine-parseable output.
 ---
 
 # openrouter-cli skill
@@ -25,6 +25,9 @@ TRIGGER when the user asks to:
 - manage BYOK provider integrations, guardrails, workspaces, files, presets, or
   organization members
 - inspect benchmarks, task classifications, and public usage datasets
+- run large jobs as async batches at about half price
+- browse server tools (web search, fetch, datetime, ...) and use them in chat
+- set workspace budgets or send traces to an observability destination
 - query management analytics
 - submit structured Decisions requests or retrieve hosted-container files
 - log in to OpenRouter from a fresh machine (OAuth PKCE in the browser)
@@ -79,8 +82,8 @@ command automatically.
 
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
-| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `containers` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `org members`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
+| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
@@ -141,14 +144,33 @@ openrouter chat "tricky question" -m anthropic/claude-sonnet-4.5 --reasoning hig
 openrouter chat "prove it" -m openai/gpt-5-mini --reasoning-max-tokens 2000
 openrouter chat "quick" -m openai/gpt-5-mini --reasoning-exclude
 
-# Web search plugin (also works via the :online model suffix)
-openrouter chat "what shipped in the news today?" -m openai/gpt-4o-mini --web --web-max-results 3
+# Server tools (run by OpenRouter): web search, fetch, datetime, ... (`openrouter tools list`)
+openrouter chat "what shipped in the news today?" -m openai/gpt-4o-mini --server-tool web_search
+openrouter chat "what day is it?" -m openai/gpt-4o-mini --server-tool 'datetime={"timezone":"UTC"}'
+# Load big tool sets lazily: mark tools deferred, let the router search them
+openrouter chat "..." -m openai/gpt-4o-mini --tool @tools.json --defer-loading \
+  --deferred-tools '{"protocol":"v1","search":{"type":"bm25","max_results":5}}'
+
+# Legacy web plugin (deprecated upstream, still works); engine + domain filters
+openrouter chat "latest on X" -m openai/gpt-4o-mini --web --web-engine exa --web-domains reuters.com,apnews.com
+
+# Alignment plugin: enforce (block) or audit rules on the reply
+openrouter chat "..." -m openai/gpt-4o-mini --rule "Never offer a discount." --alignment-mode enforce
 
 # Attach a PDF / file and parse it
 openrouter chat "summarize this" -m google/gemini-2.5-flash --file ./report.pdf --pdf-engine mistral-ocr
 
-# Prompt caching: mark the system (or user) prompt as a cache breakpoint
+# Prompt caching: automatic (top-level cache_control, optional 1h TTL) or explicit breakpoints
+openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat big-context.txt)" --cache --cache-ttl 1h
 openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat big-context.txt)" --cache-system
+
+# Tracing, sessions, priority: works on chat / messages / responses
+openrouter chat "..." -m openai/gpt-4o-mini --session-id run-42 --user u_123 \
+  --trace '{"trace_id":"t1","span_name":"plan"}' --service-tier priority
+
+# Image output from a chat model; predicted output for faster edits
+openrouter chat "draw a fox" -m google/gemini-2.5-flash-image --modalities text,image --json
+openrouter chat "fix the typo" -m openai/gpt-4o-mini --prediction @draft.md
 
 # Sampling / output controls
 openrouter chat "..." -m openai/gpt-4o-mini --top-a 0.2 --logprobs --top-logprobs 5
@@ -167,20 +189,40 @@ openrouter chat -i -m openrouter/auto
 
 # Anthropic-format and OpenAI Responses API are also available
 openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking-budget 2000
+openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking adaptive --effort high --speed fast
+openrouter messages "..." -m anthropic/claude-sonnet-4.5 --provider '{"order":["Anthropic"]}' --plugins @plugins.json
 openrouter responses "..." -m openai/gpt-4o-mini --store --include reasoning.encrypted_content
+openrouter responses "..." -m openai/gpt-5-mini --verbosity low --truncation auto
 
-# Embeddings, rerank
+# Batches: async jobs at ~half price (chat, responses, messages, embeddings)
+openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl   # {custom_id, body} per line
+openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
+
+# Embeddings (text or images), rerank
 openrouter embed -m openai/text-embedding-3-small "hello" "world"
+openrouter embed -m <multimodal-embed-model> "a cat" --image ./cat.png
 openrouter rerank -m cohere/rerank-v3.5 --query "italian food" -d pizza -d sushi -d pasta
 
-# Text to speech (audio out) and speech to text (audio in)
-openrouter speech "Hello there" -m elevenlabs/eleven-turbo-v2 --voice alloy -o out.mp3
-openrouter transcribe ./clip.wav -m openai/gpt-4o-transcribe        # alias: stt
+# Text to speech (mp3 by default; pcm also allowed): tone, multi-speaker, voice cloning
+openrouter speech "Hello there" -m elevenlabs/eleven-v4 --voice <voice> -o out.mp3
+openrouter speech "Welcome back" -m openai/gpt-4o-mini-tts --voice alloy --instructions "warm, slow"
+openrouter speech -m google/gemini-2.5-flash-preview-tts --turns @dialogue.json   # [{text, voice}]
+openrouter speech "Hi" -m <cloning-model> --ref ./sample.wav --ref-text "words in the sample"
 
-# Image generation (writes image-0.png, ...); and video jobs
+# Speech to text: file or URL, speaker labels, key terms, word timestamps
+openrouter transcribe ./clip.wav -m openai/gpt-4o-transcribe        # alias: stt
+openrouter transcribe --url https://example.com/call.mp3 -m elevenlabs/scribe-v2 --diarize
+openrouter transcribe ./talk.mp3 -m elevenlabs/scribe-v2 --keyterms OpenRouter,BYOK --timestamps word
+
+# Image generation (writes image-0.png, ...): tier or exact size, reference images
 openrouter image "a red bike on a beach" -m google/gemini-2.5-flash-image -o bike.png
-openrouter video create "a sunset over mountains" -m google/veo-3
+openrouter image "same bike, at night" -m google/gemini-2.5-flash-image --image ./bike.png --resolution 2K
+
+# Video jobs: frames, references, audio, extend
+openrouter video create "a sunset over mountains" -m google/veo-3 --resolution 1080p --audio
+openrouter video create "she turns and smiles" -m <video-model> --first-frame ./start.png --ref ./style.png
 openrouter video wait <jobId> && openrouter video download <jobId> -o out.mp4
+openrouter video create "keep going" -m <video-model> --extend <jobId>
 ```
 
 ### Discovery & pricing
@@ -199,7 +241,7 @@ openrouter models --supported tools                     # filter by capability
 # reasoning config, supported voices
 openrouter models show anthropic/claude-sonnet-4.5
 
-# Supported params + popularity analytics (p10/p50/p90 per parameter)
+# Supported request parameters (undocumented endpoint, may change)
 openrouter models parameters openai/gpt-4o --provider openai
 
 # Compare provider variants for one model - find the best one (status column too)
@@ -210,7 +252,8 @@ openrouter benchmarks --task-type coding --max-results 20
 openrouter classifications --window 7d
 openrouter datasets daily --period week --category programming
 openrouter analytics meta
-openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questions.json
+openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questions.json   # alias: systemone
+openrouter decisions --model <vision-decider> --state '...' --image ./chart.png --questions @q.json
 openrouter containers list <container-id>
 
 # Supporting metadata
@@ -219,19 +262,23 @@ openrouter embed models                                 # embedding models
 openrouter image models                                 # image gen models
 openrouter video models                                 # video gen models
 openrouter zdr                                          # ZDR-eligible endpoints
+openrouter tools list                                   # server tools catalog (openrouter:*)
+openrouter tools get web_search                         # params, engines, pricing
 ```
 
 ### Account / spend / runs
 
 ```bash
 openrouter credits                       # total balance + total usage
-openrouter whoami                        # label, daily/weekly/monthly usage, rate limit
+openrouter whoami                        # label, usage, rate limit, budgets, data regions
 openrouter generation gen-1234567890     # full per-request metadata + cost
 openrouter generation gen-1234567890 --content   # + the input/output content
+openrouter generation feedback gen-1234567890 --category incorrect_response --comment "..."
 
 # Activity (management key required) - daily aggregates per endpoint
 openrouter activity --date 2026-04-28
 openrouter activity --api-key-hash <hash>
+openrouter activity --group-by workspace
 ```
 
 NOTE: `activity` only covers **completed UTC days** in the last 30 days.
@@ -239,17 +286,18 @@ Today's data isn't queryable until tomorrow. There's no per-request log
 endpoint - the only way to inspect a specific in-flight request is by
 `generation <id>` if you saved the id at call time.
 
-`generation` lookups have a ~30-second propagation delay after the request
-completes.
+`generation` lookups have a short propagation delay after the request
+completes (the CLI retries a 404 once). Ids must look like `gen-...`.
 
 ### Key management (management key required)
 
 ```bash
-openrouter keys list
-openrouter keys create "agent key" --limit 25 --limit-reset monthly
+openrouter keys list                     # expired keys hidden; --include-expired shows them
+openrouter keys create "agent key" --limit 25 --limit-reset monthly --expires-at 2026-12-31T00:00:00Z
 openrouter keys get <hash>
 openrouter keys update <hash> --name "renamed" --limit 50
 openrouter keys update <hash> --disabled
+openrouter keys update <hash> --workspace <uuid>   # move the key to another workspace
 openrouter keys delete <hash>
 ```
 
@@ -262,15 +310,26 @@ response - capture it then.
 openrouter guardrails list
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
 openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --include-byok
-openrouter guardrails assign-key <id> <key-hash>
+openrouter guardrails update <id> --regions europe --builtin-filters email:redact,secrets:block --no-paid-training
+openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
 openrouter guardrails delete <id>
 
 openrouter workspaces list
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini
+openrouter workspaces update staging --disable-tools web_search --broadcast --io-logging-rate 0.1
 openrouter workspaces add-members <id|slug> <user_id> [<user_id>...]
+openrouter workspaces members <id|slug>             # org accounts only
+openrouter workspaces budgets staging               # spend caps per interval
+openrouter workspaces budgets set staging monthly --limit 100   # lifetime > monthly > weekly > daily
+openrouter workspaces budgets delete staging monthly
 openrouter workspaces delete <id|slug>
 
-openrouter org members
+# Observability destinations (Langfuse, Datadog, ...): secrets masked in tables
+openrouter observability list                        # alias: obs
+openrouter observability create "langfuse" --type langfuse --config @langfuse.json
+
+openrouter org members                               # org accounts only
+openrouter org settings --filtered-catalog true      # /models shows only models the key can use
 ```
 
 ### BYOK provider integrations (management key required)
@@ -282,6 +341,7 @@ through your own provider accounts.
 openrouter byok list
 openrouter byok create --provider anthropic --api-key sk-ant-... --name "my anthropic" --fallback
 openrouter byok update <id> --allowed-models "anthropic/claude-sonnet-4.5" --disabled
+openrouter byok update <id> --region europe --zdr true --byok-only
 openrouter byok get <id>
 openrouter byok delete <id>
 ```
@@ -292,15 +352,16 @@ The `--api-key` flag is the upstream provider secret (never echoed back).
 
 ```bash
 # Files - backing store for file/PDF inputs
-openrouter files upload ./report.pdf --purpose user_data
+openrouter files upload ./report.pdf [--workspace <uuid>] [--provider openai|anthropic]
 openrouter files list
 openrouter files download <file_id> -o report.pdf
 openrouter files delete <file_id>
 
-# Presets - saved config profiles (read-only). Invoke via @preset/<slug> as a model.
+# Presets - saved config profiles. Invoke via @preset/<slug> as a model.
 openrouter presets list
 openrouter presets get <slug>
 openrouter presets versions <slug>
+openrouter presets create <slug> --api chat --body @preset.json   # existing slug = new version
 ```
 
 ### Raw escape hatch

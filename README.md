@@ -71,19 +71,21 @@ and run `openrouter login --management`.
 | Feature | What it does |
 |---|---|
 | **OAuth PKCE login** | `openrouter login` opens the browser, catches the callback locally, exchanges the code, and stores the key - `0600` perms in `~/.config/openrouter/`. No paste-an-API-key dance. |
-| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `guardrails`, `workspaces`, `activity` auto-pick the management key; everything else uses the user key. `--key` always wins. |
+| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` auto-pick the management key; everything else uses the user key. `--key` always wins. |
 | **Streaming + JSON modes** | Streams in a TTY, switches to JSON when piped or `--json` is set. No global flag plumbing - works on every command. |
-| **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), reasoning effort, provider routing, fallback models, seed, stop sequences, full sampling controls. |
+| **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), server tools (`--server-tool web_search`), deferred tool loading, structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), image output (`--modalities text,image`), reasoning effort, automatic prompt caching (`--cache --cache-ttl 1h`), alignment rules (`--rule`), provider routing, fallback models, service tiers, sessions and traces, full sampling controls. |
 | **Interactive REPL** | `openrouter chat -i` - slash commands `/model <id>`, `/reset`, `/exit`. History preserved per session. |
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
-| **Embeddings + rerank + TTS + video** | `embed`, `rerank`, `speech`, `video {create,wait,download}` - async video jobs poll-until-done with `video wait <jobId>`. |
+| **Batches** | `batches {create,list,get,wait,results,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
+| **Embeddings + rerank + speech + video** | `embed` (text or images), `rerank`, `speech` (tone instructions, multi-speaker turns, voice references), `transcribe` (URL input, speaker labels, key terms, word timestamps), `video {create,wait,download}` (resolution, first/last frame, references, audio, extend) - async video jobs poll-until-done with `video wait <jobId>`. |
 | **Model discovery with detail** | `models list` (filter, sort by price/context), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
 | **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
-| **Structured decisions** | `decisions` calls the alpha Decisions API for typed choice, score, and yes/no outputs. |
+| **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs. |
+| **Server tools catalog** | `tools list` / `tools get <name>` - every OpenRouter-run tool (web search, fetch, datetime, ...) with params, engines and pricing. |
 | **Hosted shell files** | `containers {list,get,download,promote}` retrieves and promotes files produced by OpenRouter's hosted shell tools. |
 | **Spend + activity + generations** | `credits` for balance, `whoami` for daily/weekly/monthly usage + rate limit, `keys get <hash>` for per-key spend, `activity --api-key-hash <hash>` for daily aggregates, `generation <id> [--content]` for full per-request metadata + input/output. |
-| **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR), `workspaces` (defaults + members), `org members`, `auth-code` to mint claim links. All require a management key. |
+| **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR, data regions, content filters), `workspaces` (defaults, members, budgets, disabled tools), `observability` destinations (Langfuse, Datadog, ...), `org members` / `org settings`, `auth-code` to mint claim links. All require a management key. |
 | **Raw escape hatch** | `openrouter request <METHOD> <path> --body @file.json --query k=v --header k:v` - talk to any current or future endpoint without waiting for a CLI release. |
 | **Agent-friendly errors** | Stable exit codes (1 usage, 2 API, 3 no key, 4 job failed). API error messages surfaced verbatim. `OPENROUTER_DEBUG=1` for stack traces. |
 | **Zero npm dependencies** | Pure Node 20+ - built-in `fetch`, `parseArgs`, `crypto`. Cold install in seconds. Easy to audit. |
@@ -125,6 +127,14 @@ openrouter chat "List 3 fruits" -m openai/gpt-4o-mini \
 openrouter chat "What is 2+2?" -m openai/gpt-4o-mini \
   --tool @calc.json --tool-choice required --raw
 
+# Server tools (run by OpenRouter)
+openrouter tools list
+openrouter chat "What's new today?" -m openai/gpt-4o-mini --server-tool web_search
+
+# Batches at about half price
+openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl
+openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
+
 # Discovery
 openrouter models --filter claude --sort prompt
 openrouter models show anthropic/claude-sonnet-4.5
@@ -141,6 +151,8 @@ openrouter activity --date 2026-04-28 --api-key-hash <hash>
 openrouter keys create "agent-key" --limit 25 --limit-reset monthly
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini
+openrouter workspaces budgets set staging monthly --limit 100
+openrouter observability create "langfuse" --type langfuse --config @langfuse.json
 
 # Raw escape hatch - call any endpoint
 openrouter request POST /chat/completions --body @body.json
@@ -172,6 +184,7 @@ Endpoint coverage map:
 | `GET /classifications/task` | `openrouter classifications` |
 | `GET /datasets/app-rankings` / `GET /datasets/rankings-daily` / `GET /datasets/session-cost` | `openrouter datasets {apps,daily,session-cost}` |
 | `GET /models` | `openrouter models list` |
+| `GET /model/{author}/{slug}` | `openrouter models show` |
 | `GET /models/count` | `openrouter models count` |
 | `GET /models/user` | `openrouter models user` |
 | `GET /models/{author}/{slug}/endpoints` | `openrouter models endpoints` |
@@ -184,13 +197,21 @@ Endpoint coverage map:
 | `POST /rerank` | `openrouter rerank` |
 | `POST /audio/speech` | `openrouter speech`, `openrouter tts` |
 | `POST /videos`, `GET /videos/{id}`, `GET /videos/{id}/content`, `GET /videos/models` | `openrouter video {create,get,wait,download,models}` |
-| `GET /generation`, `GET /generation/content` | `openrouter generation [--content]` |
+| `GET /generation`, `GET /generation/content`, `POST /generation/feedback` | `openrouter generation [--content]`, `openrouter generation feedback` |
+| `GET/POST/DELETE /batches[/{id}]` | `openrouter batches {list,create,get,wait,results,delete}` |
+| `GET /tools`, `GET /tools/{name}` | `openrouter tools {list,get}` |
+| `POST /audio/transcriptions` | `openrouter transcribe`, `openrouter stt` |
+| `POST /images`, `GET /images/models` | `openrouter image [models]` |
 | `GET/POST/PATCH/DELETE /keys[/{hash}]` | `openrouter keys {list,get,create,update,delete}` |
 | `GET/POST/PATCH/DELETE /guardrails[/{id}]` + assignments | `openrouter guardrails ...` |
-| `GET/POST/PATCH/DELETE /workspaces[/{id}]` + members | `openrouter workspaces ...` |
-| `POST /api/alpha/decisions` | `openrouter decisions` |
+| `GET/POST/PATCH/DELETE /workspaces[/{id}]` + members + budgets | `openrouter workspaces ...` |
+| `GET/POST/PATCH/DELETE /observability/destinations[/{id}]` | `openrouter observability ...` |
+| `GET/POST/PATCH/DELETE /byok[/{id}]` | `openrouter byok ...` |
+| `GET /presets[/{slug}]` + versions, `POST /presets/{slug}/{chat/completions,messages,responses}` | `openrouter presets {list,get,versions,create}` |
+| `POST /systemone` (and `POST /api/alpha/decisions` with `--alpha`) | `openrouter systemone` / `openrouter decisions` |
 | `GET /containers/{id}/files[/{file}]` + content/promote | `openrouter containers ...` |
 | `GET /organization/members` | `openrouter org members` |
+| `GET/PATCH /organization/settings` | `openrouter org settings` |
 | anything else | `openrouter request <METHOD> <path>` |
 
 ## Configuration

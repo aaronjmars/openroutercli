@@ -40,6 +40,28 @@ function renderKey(label, data) {
       `  rate_limit:         ${d.rate_limit.requests ?? "?"} req / ${d.rate_limit.interval ?? "?"}`,
     );
   }
+  if (d.allowed_data_regions) {
+    outln(`  data_regions:       ${d.allowed_data_regions.join(", ") || "-"}`);
+  }
+  if (d.effective_budget) {
+    outln(`  effective_budget:   ${fmtBudget(d.effective_budget)}`);
+  }
+  if (Array.isArray(d.budgets) && d.budgets.length) {
+    outln(
+      "  budgets:            " + c.dim("(checked in this order; any at $0 left blocks requests)"),
+    );
+    for (const b of d.budgets) outln(`    ${fmtBudget(b)}`);
+  }
+}
+
+// One budget layer on a line: scope, spend/limit, remaining, window.
+function fmtBudget(b) {
+  const money = (x) => (x == null ? "?" : `$${Number(x).toFixed(2)}`);
+  const window = b.reset_interval
+    ? `${b.reset_interval}${b.resets_at ? `, resets ${b.resets_at}` : ""}`
+    : "lifetime";
+  const byok = b.include_byok ? ", incl. BYOK" : "";
+  return `${b.scope ?? "?"}: ${money(b.spend_usd)} of ${money(b.limit_usd)} used, ${money(b.remaining_usd)} left (${window}${byok})`;
 }
 
 export async function whoamiCommand(argv) {
@@ -113,17 +135,32 @@ export async function activityCommand(argv) {
     date: { type: "string" },
     "api-key-hash": { type: "string" },
     "user-id": { type: "string" },
+    "group-by": { type: "string" },
+    workspace: { type: "string" },
   });
   if (values.help) {
     process.stdout.write(
-      `Usage: openrouter activity [options]\n\nGet usage activity grouped by endpoint.\n\nOptions:\n  --date <YYYY-MM-DD>     UTC date in last 30 days\n  --api-key-hash <hash>   Filter by API key SHA-256 hash\n  --user-id <id>          Filter by org member user ID\n`,
+      "Usage: openrouter activity [options]\n\n" +
+        "Get usage activity for the last 30 completed UTC days, grouped by endpoint.\n" +
+        "Requires a management key.\n\n" +
+        "Options:\n" +
+        "  --date <YYYY-MM-DD>     UTC date in last 30 days\n" +
+        "  --api-key-hash <hash>   Filter by API key SHA-256 hash\n" +
+        "  --user-id <id>          Filter by org member user ID\n" +
+        "  --workspace <uuid>      Only activity attributed to this workspace\n" +
+        "  --group-by workspace    Split each row per workspace (adds workspace_id)\n",
     );
     return 0;
+  }
+  if (values["group-by"] && values["group-by"] !== "workspace") {
+    throw new Error(`Unknown --group-by "${values["group-by"]}". Expected: workspace`);
   }
   const query = {};
   if (values.date) query.date = values.date;
   if (values["api-key-hash"]) query.api_key_hash = values["api-key-hash"];
   if (values["user-id"]) query.user_id = values["user-id"];
+  if (values.workspace) query.workspace_id = values.workspace;
+  if (values["group-by"]) query.group_by = values["group-by"];
   const data = await api("GET", "/activity", {
     auth: authFromValues(values),
     requiresManagement: true,
@@ -135,13 +172,20 @@ export async function activityCommand(argv) {
       outln(c.dim("(no activity)"));
       return;
     }
-    table(rows, [
+    const columns = [
       { label: "date", value: (r) => r.date || r.day || "" },
       { label: "model", value: (r) => r.model || r.model_permaslug || "" },
+      { label: "provider", value: (r) => r.provider_name || "" },
       { label: "requests", value: (r) => r.requests ?? r.request_count ?? "" },
-      { label: "tokens", value: (r) => r.tokens ?? r.total_tokens ?? "" },
+      { label: "prompt", value: (r) => r.prompt_tokens ?? "" },
+      { label: "completion", value: (r) => r.completion_tokens ?? "" },
+      { label: "cached", value: (r) => r.cached_tokens ?? "" },
       { label: "cost", value: (r) => r.usage ?? r.cost ?? "" },
-    ]);
+    ];
+    if (rows.some((r) => r.workspace_id)) {
+      columns.splice(1, 0, { label: "workspace", value: (r) => r.workspace_id || "" });
+    }
+    table(rows, columns);
   });
   return 0;
 }

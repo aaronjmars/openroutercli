@@ -25,7 +25,10 @@ import {
   classificationsCommand,
   datasetsCommand,
 } from "./commands/data.js";
-import { decisionsCommand } from "./commands/decisions.js";
+import { decisionsCommand, systemoneCommand } from "./commands/decisions.js";
+import { batchesCommand } from "./commands/batches.js";
+import { toolsCommand } from "./commands/tools.js";
+import { observabilityCommand } from "./commands/observability.js";
 import { containersCommand } from "./commands/containers.js";
 import { DEFAULT_BASE_URL } from "./config.js";
 import { readFileSync } from "node:fs";
@@ -72,6 +75,12 @@ const COMMANDS = {
   datasets: datasetsCommand,
   decisions: decisionsCommand,
   decision: decisionsCommand,
+  systemone: systemoneCommand,
+  batches: batchesCommand,
+  batch: batchesCommand,
+  tools: toolsCommand,
+  observability: observabilityCommand,
+  obs: observabilityCommand,
   containers: containersCommand,
   request: requestCommand,
 };
@@ -99,34 +108,41 @@ Inference:
   transcribe <file>      Speech to text (audio in). Alias: stt
   video <sub>            Video generation jobs (create / get / wait / download / models)
   image <sub>            Image generation (create / models / endpoints). Alias: images
+  batches <sub>          Async batch jobs at ~half price (list / create / get / wait /
+                         results / delete). Alias: batch
 
 Discovery:
   models [list|show|endpoints|parameters|count|user]  List models, full model
-                                           detail, provider variants, param
-                                           analytics, count, or your set
+                                           detail, provider variants, supported
+                                           params, count, or your set
   embed models                             List embedding models
   video models                             List video generation models
   image models                             List image generation models
   providers                                List providers (with HQ + datacenters)
-  presets <sub>                            list / get / versions (saved config profiles)
+  presets <sub>                            list / get / versions / create (saved config profiles)
   generation <id> [--content]              Generation metadata or content
+  generation feedback <id> --category <c>  Report a problem with a generation
+  tools [list|get]                         Server tools (web_search, web_fetch, datetime...) + engines
   credits                                  Remaining credits
   activity                                 Usage activity (management key)
   benchmarks [options]                     Unified benchmark rankings
   classifications [options]                Task classification market share
   datasets <sub>                           Public usage datasets
-  decisions                                Structured Decisions API (alpha)
+  systemone                                System One structured decisions (alias: decisions)
   containers <sub>                         Hosted shell output files
-  files <sub>                               Workspace files
+  files <sub>                              Workspace files
   zdr                                      Preview Zero-Data-Retention impact
 
 Management (require a management key):
   keys <sub>             list / get / create / update / delete
   byok <sub>             list / get / create / update / delete (provider integrations)
   guardrails <sub>       list / get / create / update / delete / assignments
-  workspaces <sub>       list / get / create / update / delete / add-members / remove-members
+  workspaces <sub>       list / get / create / update / delete / members / add-members /
+                         remove-members / budgets
+  observability <sub>    list / get / create / update / delete trace destinations. Alias: obs
   analytics <sub>        meta / query (management key)
-  org members            List organization members
+  org members            List organization members (org accounts)
+  org settings           Show or change organization settings (org accounts)
   auth-code              Mint a PKCE authorization code so a user can claim a key
   request <METHOD> <path>  Raw authenticated request to any endpoint
 
