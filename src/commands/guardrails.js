@@ -53,6 +53,10 @@ create / update options:
   --free-publication / --no-free-publication  Allow free endpoints that publish prompts
   --free-training / --no-free-training        Allow free endpoints that train on data
   --paid-training / --no-paid-training        Allow paid endpoints that train on data
+  --allow-safety-retention-google / --no-allow-safety-retention-google
+                            Allow ZDR requests to google/* to use endpoints that retain for safety
+  --allow-safety-retention-other / --no-allow-safety-retention-other
+                            Allow ZDR requests to other models to use endpoints that retain for safety
   --include-byok / --no-include-byok   Count BYOK spend toward the budget
   --workspace <uuid>        (create only)
   --extra <json|@file>      Extra body fields, merged last (e.g. enforce_zdr_xai:false)
@@ -145,6 +149,8 @@ async function buildBody(values) {
     ["enable_free_model_publication", "free-publication"],
     ["enable_free_model_training", "free-training"],
     ["enable_paid_model_training", "paid-training"],
+    ["allow_safety_retention_google", "allow-safety-retention-google"],
+    ["allow_safety_retention_other", "allow-safety-retention-other"],
   ];
   for (const [field, flag] of toggles) {
     const v = toggle(values, flag, `no-${flag}`);
@@ -182,6 +188,10 @@ const COMMON_FIELDS = {
   "no-free-training": { type: "boolean" },
   "paid-training": { type: "boolean" },
   "no-paid-training": { type: "boolean" },
+  "allow-safety-retention-google": { type: "boolean" },
+  "no-allow-safety-retention-google": { type: "boolean" },
+  "allow-safety-retention-other": { type: "boolean" },
+  "no-allow-safety-retention-other": { type: "boolean" },
   extra: { type: "string" },
 };
 

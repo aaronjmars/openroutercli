@@ -424,13 +424,15 @@ export async function modelsCommand(argv) {
       parsed = parseArgs(rest, {
         ...PAGINATION_OPTIONS,
         "output-modalities": { type: "string" },
+        order: { type: "string" },
+        sort: { type: "string" },
       });
     } catch (err) {
       // `models user` used to forward every list filter; the endpoint only
-      // takes these three, so say so instead of a bare "Unknown option".
+      // takes these, so say so instead of a bare "Unknown option".
       if (err.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
         throw new Error(
-          `${err.message.split(".")[0]}. models user only supports --output-modalities, --limit and --offset; use \`openrouter models list\` for search filters.`,
+          `${err.message.split(".")[0]}. models user only supports --output-modalities, --order/--sort, --limit and --offset; use \`openrouter models list\` for search filters.`,
         );
       }
       throw err;
@@ -438,13 +440,20 @@ export async function modelsCommand(argv) {
     const { values } = parsed;
     if (values.help) {
       process.stdout.write(
-        "Usage: openrouter models user [--output-modalities <csv>] [--limit <n>] [--offset <n>]\n\n" +
+        "Usage: openrouter models user [options]\n\n" +
           "List models filtered by your provider preferences, privacy settings, and\n" +
           "guardrails. Uses your API key; on a regional host (eu/us) only models that\n" +
           "can route in-region are returned.\n\n" +
           "Options:\n" +
           "  --output-modalities <csv>  text,image,embeddings,audio,video,rerank,decisions,\n" +
           '                             speech,transcription (or "all"). Default: text\n' +
+          "  --order <sort>             Server-side sort: most-popular|newest|top-weekly|\n" +
+          "                             pricing-low-to-high|pricing-high-to-low|\n" +
+          "                             context-high-to-low|throughput-high-to-low|\n" +
+          "                             latency-low-to-high|intelligence-high-to-low|\n" +
+          "                             coding-high-to-low|agentic-high-to-low|\n" +
+          "                             design-arena-elo-high-to-low\n" +
+          "  --sort <sort>              Alias for --order\n" +
           "  --limit <n>                Max rows (1-1000). Omit limit and offset for all\n" +
           "  --offset <n>               Rows to skip\n",
       );
@@ -452,6 +461,7 @@ export async function modelsCommand(argv) {
     }
     const query = paginationQuery(values);
     if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
+    if (values.order || values.sort) query.sort = values.order || values.sort;
     const data = await api("GET", "/models/user", {
       auth: authFromValues(values),
       query,

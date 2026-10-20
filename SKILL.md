@@ -191,11 +191,11 @@ openrouter chat -i -m openrouter/auto
 openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking-budget 2000
 openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking adaptive --effort high --speed fast
 openrouter messages "..." -m anthropic/claude-sonnet-4.5 --provider '{"order":["Anthropic"]}' --plugins @plugins.json
-openrouter responses "..." -m openai/gpt-4o-mini --store --include reasoning.encrypted_content
+openrouter responses "..." -m openai/gpt-4o-mini --stop "END,STOP" --store --include reasoning.encrypted_content
 openrouter responses "..." -m openai/gpt-5-mini --verbosity low --truncation auto
 
 # Batches: async jobs at ~half price (chat, responses, messages, embeddings)
-openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl   # {custom_id, body} per line
+openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook   # {custom_id, body} per line
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
 
 # Embeddings (text or images), rerank
@@ -235,8 +235,8 @@ openrouter models --order intelligence-high-to-low      # server-side ranking
 openrouter models --free                                # only :free models
 openrouter models --input-modalities image              # image-INPUT (vision) models
 openrouter models --output-modalities image             # image-OUTPUT models
+openrouter models user --order newest                   # account-filtered models, server-side sort
 openrouter models --supported tools                     # filter by capability
-
 # Full detail for one model: pricing breakdown, architecture, supported params,
 # reasoning config, supported voices
 openrouter models show anthropic/claude-sonnet-4.5
@@ -311,8 +311,8 @@ openrouter guardrails list
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
 openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --include-byok
 openrouter guardrails update <id> --regions europe --builtin-filters email:redact,secrets:block --no-paid-training
+openrouter guardrails update <id> --allow-safety-retention-google --no-allow-safety-retention-other
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
-openrouter guardrails delete <id>
 
 openrouter workspaces list
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini

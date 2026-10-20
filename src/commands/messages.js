@@ -71,8 +71,8 @@ Options:
       --temperature <n>
       --top-p <n>
       --seed <n>
+      --stop <text>        Stop sequence (repeatable via comma, max 4)
       --reasoning <effort> none|minimal|low|medium|high|xhigh|max
-      --verbosity <v>      low | medium | high | xhigh | max (text.verbosity)
       --truncation <t>     auto | disabled
       --models <csv>       Fallback models
       --provider <json|@file>  Provider routing (order, only, sort, ...;
@@ -308,9 +308,9 @@ export async function responsesCommand(argv) {
     temperature: { type: "string" },
     "top-p": { type: "string" },
     seed: { type: "string" },
+    stop: { type: "string" },
     reasoning: { type: "string" },
     models: { type: "string" },
-    provider: { type: "string" },
     plugins: { type: "string" },
     metadata: { type: "string" },
     "parallel-tools": { type: "boolean" },
@@ -349,8 +349,8 @@ export async function responsesCommand(argv) {
       "top-p": "top_p",
       seed: "seed",
     });
+    if (values.stop) body.stop = values.stop.includes(",") ? values.stop.split(",") : values.stop;
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
-    if (values.verbosity) body.text = { verbosity: values.verbosity };
     if (values.truncation) body.truncation = values.truncation;
     if (values.models) body.models = csv(values.models);
     if (values.provider) body.provider = await loadJson(values.provider, "--provider");
