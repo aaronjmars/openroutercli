@@ -30,6 +30,7 @@ create options:
                                 (a line without "body" is used as the body itself and
                                 gets custom_id req-<n>). Reads stdin when omitted.
       --completion-window <w>   Default: 24h
+      --callback-url <url>      Webhook URL called on terminal status events
       --provider <json|@file>   Routing: {"only": [...], "allow_fallbacks": false}
       --only <csv>              Shortcut for provider.only
       --no-fallbacks            Shortcut for provider.allow_fallbacks = false
@@ -228,6 +229,7 @@ export async function batchesCommand(argv) {
       endpoint: { type: "string" },
       file: { type: "string" },
       "completion-window": { type: "string" },
+      "callback-url": { type: "string" },
       provider: { type: "string" },
       only: { type: "string" },
       "no-fallbacks": { type: "boolean" },
@@ -257,8 +259,8 @@ export async function batchesCommand(argv) {
     const body = { endpoint: resolveEndpoint(values.endpoint), model: values.model };
     if (provider) body.provider = provider;
     if (values["completion-window"]) body.completion_window = values["completion-window"];
+    if (values["callback-url"]) body.callback_url = values["callback-url"];
     body.requests = requests;
-
     const data = await api("POST", "/batches", { auth: authFromValues(values), body });
     printBatch(data);
     info(`Submitted ${requests.length} request(s). Next: openrouter batches wait ${data.id}`);

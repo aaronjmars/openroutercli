@@ -132,15 +132,15 @@ openrouter tools list
 openrouter chat "What's new today?" -m openai/gpt-4o-mini --server-tool web_search
 
 # Batches at about half price
-openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl
+openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
 
 # Discovery
 openrouter models --filter claude --sort prompt
+openrouter models user --order newest
 openrouter models show anthropic/claude-sonnet-4.5
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter providers
-
 # Spend / runs
 openrouter credits
 openrouter whoami
