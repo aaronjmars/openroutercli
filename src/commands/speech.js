@@ -26,7 +26,8 @@ Options:
                        or one image (.png/.jpg/.webp) for voice design.
                        Local files are sent as data URLs.
       --ref-text <t>   Transcript of a --ref clip (repeatable, in --ref order)
-      --format <fmt>   mp3 | pcm (default: mp3; pcm is raw 16-bit audio)
+      --format <fmt>   mp3 | pcm (default: mp3, or pcm for HeyGen Voice and
+                       Gemini TTS, which only return pcm; pcm is raw 16-bit audio)
       --speed <n>      Speech speed (e.g. 1.0)
   -o, --out <file>     Output audio file (default: out.mp3 / out.pcm, or stdout if -)
       --provider <json|@file>  Routing and provider options, e.g.
@@ -86,8 +87,10 @@ export async function speechCommand(argv) {
     input = text;
   }
 
-  // The API defaults to raw PCM; ask for mp3 so the default out.mp3 plays.
-  const format = values.format || "mp3";
+  // The API defaults to raw PCM; ask for mp3 so the default out.mp3 plays,
+  // except on HeyGen Voice and Gemini TTS, which return only pcm (400 on mp3).
+  const pcmOnly = /^heygen\//.test(values.model) || /^google\/.*-tts\b/.test(values.model);
+  const format = values.format || (pcmOnly ? "pcm" : "mp3");
   const body = { model: values.model, input, response_format: format };
   if (values.voice) body.voice = values.voice;
   if (values.instructions) body.instructions = values.instructions;

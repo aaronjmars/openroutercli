@@ -163,6 +163,9 @@ openrouter chat "summarize this" -m google/gemini-2.5-flash --file ./report.pdf 
 # Prompt caching: automatic (top-level cache_control, optional 1h TTL) or explicit breakpoints
 openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat big-context.txt)" --cache --cache-ttl 1h
 openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat big-context.txt)" --cache-system
+# OpenAI explicit caching (GPT-5.6+): 30m or 12h TTL, marks the system prompt (else the prompt);
+# works on chat and responses, 12h writes bill at a higher rate
+openrouter chat "answer from the doc" -m openai/gpt-5.6 -s "$(cat big-context.txt)" --cache-ttl 12h
 
 # Tracing, sessions, priority: works on chat / messages / responses
 openrouter chat "..." -m openai/gpt-4o-mini --session-id run-42 --user u_123 \
@@ -203,7 +206,7 @@ openrouter embed -m openai/text-embedding-3-small "hello" "world"
 openrouter embed -m <multimodal-embed-model> "a cat" --image ./cat.png
 openrouter rerank -m cohere/rerank-v3.5 --query "italian food" -d pizza -d sushi -d pasta
 
-# Text to speech (mp3 by default; pcm also allowed): tone, multi-speaker, voice cloning
+# Text to speech (mp3 by default, pcm for HeyGen Voice + Gemini TTS which only return pcm): tone, multi-speaker, voice cloning
 openrouter speech "Hello there" -m elevenlabs/eleven-v4 --voice <voice> -o out.mp3
 openrouter speech "Welcome back" -m openai/gpt-4o-mini-tts --voice alloy --instructions "warm, slow"
 openrouter speech -m google/gemini-2.5-flash-preview-tts --turns @dialogue.json   # [{text, voice}]

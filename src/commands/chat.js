@@ -42,7 +42,9 @@ export const SERVER_TOOL_HELP = `      --server-tool <name>[=<json|@file>]  Open
 `;
 
 export const CACHE_HELP = `      --cache              Automatic prompt caching (top-level cache_control)
-      --cache-ttl <ttl>    5m | 1h (implies --cache)
+      --cache-ttl <ttl>    5m | 1h (implies --cache). chat/responses also take
+                           30m | 12h: OpenAI explicit prompt_cache_options
+                           (GPT-5.6+; 12h writes bill higher)
 `;
 
 export const ALIGNMENT_HELP = `      --rule <text>        Alignment plugin rule (repeatable, max 128, <=200 chars,
@@ -80,11 +82,25 @@ export async function applyToolExtras(body, values) {
   }
 }
 
-export function applyCache(body, values) {
-  if (!values.cache && !values["cache-ttl"]) return;
+const EXPLICIT_CACHE_TTLS = ["30m", "12h"];
+
+// 5m | 1h: top-level cache_control (Anthropic style). 30m | 12h: OpenAI
+// explicit prompt_cache_options, which only caches blocks marked with
+// prompt_cache_breakpoint, so the caller must mark one. Returns true for the
+// explicit form. `explicit` = the endpoint accepts it (chat, responses).
+export function applyCache(body, values, { explicit = false } = {}) {
+  if (!values.cache && !values["cache-ttl"]) return false;
   const ttl = values["cache-ttl"];
-  if (ttl && ttl !== "5m" && ttl !== "1h") throw new Error(`--cache-ttl must be 5m or 1h`);
+  if (EXPLICIT_CACHE_TTLS.includes(ttl)) {
+    if (!explicit) throw new Error("--cache-ttl 30m|12h works with chat and responses only");
+    body.prompt_cache_options = { mode: "explicit", ttl };
+    return true;
+  }
+  if (ttl && ttl !== "5m" && ttl !== "1h") {
+    throw new Error(`--cache-ttl must be ${explicit ? "5m, 1h, 30m or 12h" : "5m or 1h"}`);
+  }
   body.cache_control = { type: "ephemeral", ...(ttl ? { ttl } : {}) };
+  return false;
 }
 
 // Adds the alignment plugin from --rule/--alignment-*. An alignment entry
@@ -355,15 +371,18 @@ async function buildPlugins(values) {
   return addAlignmentPlugin(list, values);
 }
 
-// Wrap a string into a single text content part so a cache_control breakpoint
-// can be attached; content already in part form is returned untouched.
-function markCache(content) {
-  if (typeof content === "string") {
-    return [{ type: "text", text: content, cache_control: { type: "ephemeral" } }];
-  }
+// Wrap a string into a single text content part so a cache breakpoint can be
+// attached; content already in part form gets it on its last part. Explicit
+// mode uses prompt_cache_breakpoint, which only text parts accept.
+function markCache(content, explicit) {
+  const mark = explicit
+    ? { prompt_cache_breakpoint: { mode: "explicit" } }
+    : { cache_control: { type: "ephemeral" } };
+  if (typeof content === "string") return [{ type: "text", text: content, ...mark }];
   if (Array.isArray(content) && content.length) {
     const parts = content.map((p) => ({ ...p }));
-    parts[parts.length - 1].cache_control = { type: "ephemeral" };
+    const i = explicit ? parts.findLastIndex((p) => p.type === "text") : parts.length - 1;
+    if (i !== -1) Object.assign(parts[i], mark);
     return parts;
   }
   return content;
@@ -427,22 +446,23 @@ async function applyRequestOptions(body, values) {
   }
   if (values["prompt-cache-key"]) body.prompt_cache_key = values["prompt-cache-key"];
   if (values.metadata) body.metadata = await loadJsonOrFile(values.metadata, "--metadata");
-  applyCache(body, values);
+  const explicit = applyCache(body, values, { explicit: true });
   await applyRequestFields(body, values);
 
   const plugins = await buildPlugins(values);
   if (plugins.length) body.plugins = plugins;
 
-  // cache_control breakpoints are attached to message content, so this must
-  // run after the messages are assembled.
-  if (values["cache-system"]) {
-    const sys = body.messages.find((m) => m.role === "system");
-    if (sys) sys.content = markCache(sys.content);
-  }
-  if (values["cache-user"]) {
+  // Cache breakpoints are attached to message content, so this must run after
+  // the messages are assembled. Explicit mode caches nothing unmarked, so with
+  // no --cache-system/--cache-user it marks the system prompt, else the prompt.
+  const sys = body.messages.find((m) => m.role === "system");
+  const markSystem = values["cache-system"] || (explicit && !values["cache-user"] && sys);
+  const markUser = values["cache-user"] || (explicit && !values["cache-system"] && !sys);
+  if (markSystem && sys) sys.content = markCache(sys.content, explicit);
+  if (markUser) {
     for (let i = body.messages.length - 1; i >= 0; i--) {
       if (body.messages[i].role === "user") {
-        body.messages[i].content = markCache(body.messages[i].content);
+        body.messages[i].content = markCache(body.messages[i].content, explicit);
         break;
       }
     }
