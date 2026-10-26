@@ -374,7 +374,22 @@ export async function responsesCommand(argv) {
     if (values.background) body.background = true;
     if (values["prompt-cache-key"]) body.prompt_cache_key = values["prompt-cache-key"];
     if (values["safety-identifier"]) body.safety_identifier = values["safety-identifier"];
-    applyCache(body, values);
+    // Explicit mode caches only marked blocks: mark the prompt, which caches
+    // the instructions before it too.
+    if (applyCache(body, values, { explicit: true }) && typeof body.input === "string") {
+      body.input = [
+        {
+          role: "user",
+          content: [
+            {
+              type: "input_text",
+              text: body.input,
+              prompt_cache_breakpoint: { mode: "explicit" },
+            },
+          ],
+        },
+      ];
+    }
     await applyRequestFields(body, values);
     if (values.extra) Object.assign(body, await loadJson(values.extra, "--extra"));
   }

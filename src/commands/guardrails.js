@@ -64,7 +64,7 @@ create / update options:
 
 const ZDR_PROVIDERS = ["anthropic", "openai", "google", "xai", "other"];
 const REGIONS = ["global", "europe", "us"];
-const MAX_KEY_HASHES = 500;
+const MAX_BULK_IDS = 500;
 
 function toggle(values, on, off) {
   if (values[on] && values[off]) throw new Error(`Pass only one of --${on} or --${off}.`);
@@ -339,9 +339,9 @@ export async function guardrailsCommand(argv) {
     if (positionals.length < 2) throw new Error("Usage: <id> <hash>...");
     const id = positionals[0];
     const hashes = positionals.slice(1);
-    if (hashes.length > MAX_KEY_HASHES) {
+    if (hashes.length > MAX_BULK_IDS) {
       throw new Error(
-        `Too many key hashes (${hashes.length}); the API takes at most ${MAX_KEY_HASHES} per call. Split into batches.`,
+        `Too many key hashes (${hashes.length}); the API takes at most ${MAX_BULK_IDS} per call. Split into batches.`,
       );
     }
     const path =
@@ -362,6 +362,11 @@ export async function guardrailsCommand(argv) {
     if (positionals.length < 2) throw new Error("Usage: <id> <user_id>...");
     const id = positionals[0];
     const userIds = positionals.slice(1);
+    if (userIds.length > MAX_BULK_IDS) {
+      throw new Error(
+        `Too many user ids (${userIds.length}); the API takes at most ${MAX_BULK_IDS} per call. Split into batches.`,
+      );
+    }
     const path =
       sub === "assign-member"
         ? `/guardrails/${encodeURIComponent(id)}/assignments/members`
