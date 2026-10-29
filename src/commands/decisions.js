@@ -16,6 +16,9 @@ Options:
       --questions <json>   Questions object or @questions.json
       --image <url|path>   Add an image to the state (repeatable). Local files
                            are sent as data URLs. For multimodal models.
+      --assets <json|@file>  Named images referenced from state/instructions/
+                           criteria: {"ref-name": "<local path>"} (png/jpg/jpeg;
+                           uploaded as data_base64). Every name must be referenced.
       --body <json|@file>  Fully-formed request body
       --extra <json>       Extra fields merged into the request
       --alpha              Use the older /api/alpha/decisions route
@@ -57,6 +60,7 @@ export async function decisionsCommand(argv) {
     state: { type: "string" },
     questions: { type: "string" },
     image: { type: "string", multiple: true },
+    assets: { type: "string" },
     body: { type: "string" },
     extra: { type: "string" },
     alpha: { type: "boolean" },
@@ -80,6 +84,26 @@ export async function decisionsCommand(argv) {
   if (images.length) {
     const parts = await Promise.all(images.map(imagePart));
     body.state = withImages(body.state, parts);
+  }
+  if (values.assets !== undefined) {
+    const assets = await loadJson(values.assets, "--assets");
+    if (!assets || typeof assets !== "object" || Array.isArray(assets)) {
+      throw new Error('--assets must be a JSON object like {"ref": "<path>"}');
+    }
+    body.assets = {};
+    for (const [name, src] of Object.entries(assets)) {
+      const url = await mediaUrl(src);
+      if (!url.startsWith("data:")) {
+        throw new Error(
+          `--assets "${name}": the Decisions API only accepts uploaded images. Give a local file (png/jpg/jpeg), not a URL.`,
+        );
+      }
+      const [mime, b64] = url.slice(5).split(";base64,");
+      const format = { "image/png": "png", "image/jpeg": "jpeg" }[mime];
+      if (!format)
+        throw new Error(`--assets "${name}": expected a png/jpg/jpeg image, got ${mime}`);
+      body.assets[name] = { type: "image", format, data_base64: b64 };
+    }
   }
   if (values.extra) Object.assign(body, await loadJson(values.extra, "--extra"));
   const data = values.alpha

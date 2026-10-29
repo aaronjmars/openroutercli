@@ -57,6 +57,10 @@ create / update options:
                             Allow ZDR requests to google/* to use endpoints that retain for safety
   --allow-safety-retention-other / --no-allow-safety-retention-other
                             Allow ZDR requests to other models to use endpoints that retain for safety
+  --harness-models / --no-harness-models
+                            enforce_first_party_harness_models: when a coding
+                            harness (claude_code, claude_desktop, codex) lists
+                            models, show only the harness vendor's own
   --include-byok / --no-include-byok   Count BYOK spend toward the budget
   --workspace <uuid>        (create only)
   --extra <json|@file>      Extra body fields, merged last (e.g. enforce_zdr_xai:false)
@@ -151,6 +155,7 @@ async function buildBody(values) {
     ["enable_paid_model_training", "paid-training"],
     ["allow_safety_retention_google", "allow-safety-retention-google"],
     ["allow_safety_retention_other", "allow-safety-retention-other"],
+    ["enforce_first_party_harness_models", "harness-models"],
   ];
   for (const [field, flag] of toggles) {
     const v = toggle(values, flag, `no-${flag}`);
@@ -192,6 +197,8 @@ const COMMON_FIELDS = {
   "no-allow-safety-retention-google": { type: "boolean" },
   "allow-safety-retention-other": { type: "boolean" },
   "no-allow-safety-retention-other": { type: "boolean" },
+  "harness-models": { type: "boolean" },
+  "no-harness-models": { type: "boolean" },
   extra: { type: "string" },
 };
 
