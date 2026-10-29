@@ -166,6 +166,8 @@ openrouter chat "answer from the doc" -m anthropic/claude-sonnet-4.5 -s "$(cat b
 # OpenAI explicit caching (GPT-5.6+): 30m or 12h TTL, marks the system prompt (else the prompt);
 # works on chat and responses, 12h writes bill at a higher rate
 openrouter chat "answer from the doc" -m openai/gpt-5.6 -s "$(cat big-context.txt)" --cache-ttl 12h
+# Response cache (X-OpenRouter-Cache): free repeat responses for identical requests
+openrouter chat "fixed prompt" -m openrouter/auto --response-cache
 
 # Tracing, sessions, priority: works on chat / messages / responses
 openrouter chat "..." -m openai/gpt-4o-mini --session-id run-42 --user u_123 \

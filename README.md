@@ -141,6 +141,9 @@ openrouter models user --order newest
 openrouter models user --client codex          # only models a coding harness offers
 openrouter models show anthropic/claude-sonnet-4.5
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
+
+# Response cache: identical repeats are free (X-OpenRouter-Cache)
+openrouter chat "fixed prompt" -m openrouter/auto --response-cache
 openrouter providers
 # Spend / runs
 openrouter credits
