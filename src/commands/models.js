@@ -426,13 +426,14 @@ export async function modelsCommand(argv) {
         "output-modalities": { type: "string" },
         order: { type: "string" },
         sort: { type: "string" },
+        client: { type: "string" },
       });
     } catch (err) {
       // `models user` used to forward every list filter; the endpoint only
       // takes these, so say so instead of a bare "Unknown option".
       if (err.code === "ERR_PARSE_ARGS_UNKNOWN_OPTION") {
         throw new Error(
-          `${err.message.split(".")[0]}. models user only supports --output-modalities, --order/--sort, --limit and --offset; use \`openrouter models list\` for search filters.`,
+          `${err.message.split(".")[0]}. models user only supports --output-modalities, --order/--sort, --client, --limit and --offset; use \`openrouter models list\` for search filters.`,
         );
       }
       throw err;
@@ -447,6 +448,10 @@ export async function modelsCommand(argv) {
           "Options:\n" +
           "  --output-modalities <csv>  text,image,embeddings,audio,video,rerank,decisions,\n" +
           '                             speech,transcription (or "all"). Default: text\n' +
+          "  --client <harness>         Only models the named coding harness offers:\n" +
+          "                             claude_code | claude_desktop | codex. When a\n" +
+          "                             guardrail sets enforce_first_party_harness_models,\n" +
+          "                             only the harness vendor's own models.\n" +
           "  --order <sort>             Server-side sort: most-popular|newest|top-weekly|\n" +
           "                             pricing-low-to-high|pricing-high-to-low|\n" +
           "                             context-high-to-low|throughput-high-to-low|\n" +
@@ -462,6 +467,14 @@ export async function modelsCommand(argv) {
     const query = paginationQuery(values);
     if (values["output-modalities"]) query.output_modalities = values["output-modalities"];
     if (values.order || values.sort) query.sort = values.order || values.sort;
+    if (values.client) {
+      if (!["claude_code", "claude_desktop", "codex"].includes(values.client)) {
+        throw new Error(
+          `Unknown --client "${values.client}". Expected: claude_code, claude_desktop, codex`,
+        );
+      }
+      query.client = values.client;
+    }
     const data = await api("GET", "/models/user", {
       auth: authFromValues(values),
       query,

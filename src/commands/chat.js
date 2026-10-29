@@ -209,11 +209,14 @@ ${SERVER_TOOL_HELP}      --reasoning <effort> none|minimal|low|medium|high|xhigh
       --reasoning-max-tokens <n>  Reasoning token budget (Anthropic-style)
       --reasoning-exclude  Reason internally but omit reasoning from the output
       --provider <json|@file>  Provider routing (order, only, sort, ...;
-                           options: per-provider passthrough keyed by slug)
+                           options: per-provider passthrough keyed by slug).
+                           Default routing weighs quality-per-cost; sort:price or
+                           a :floor model suffix keeps the cheapest-first order
       --modalities <csv>   Output modalities: text,image,audio
       --image-config <json|@file>  Image output options, e.g. {"aspect_ratio":"16:9"}
       --prediction <text|@file>    Predicted output (prediction.content) to cut latency
-      --prompt-cache-key <k>       Provider prompt-cache key
+      --response-cache      X-OpenRouter-Cache: free repeat responses for
+                           identical requests (separate from --cache prompt caching)
       --metadata <json|@file>      String key/value pairs (max 16)
 ${CACHE_HELP}      --cache-system       Mark the system prompt as a cache breakpoint
       --cache-user         Mark the user prompt as a cache breakpoint
@@ -495,13 +498,13 @@ function printUsage(model, usage) {
   );
 }
 
-async function streamResponse(body, auth) {
+async function streamResponse(body, auth, extraHeaders) {
   const res = await withAlignmentErrors(
     api("POST", "/chat/completions", {
       auth,
       body: { ...body, stream: true },
       raw: true,
-      headers: { Accept: "text/event-stream" },
+      headers: { Accept: "text/event-stream", ...extraHeaders },
     }),
   );
   let usage = null;
@@ -594,6 +597,7 @@ export async function chatCommand(argv) {
     "image-config": { type: "string" },
     prediction: { type: "string" },
     "prompt-cache-key": { type: "string" },
+    "response-cache": { type: "boolean" },
     metadata: { type: "string" },
     image: { type: "string", multiple: true },
     file: { type: "string", multiple: true },
@@ -643,7 +647,10 @@ export async function chatCommand(argv) {
   const body = await buildBody(values, prompt);
 
   if (!shouldStream(values)) {
-    const data = await withAlignmentErrors(api("POST", "/chat/completions", { auth, body }));
+    const rcHeaders = values["response-cache"] ? { "X-OpenRouter-Cache": "true" } : undefined;
+    const data = await withAlignmentErrors(
+      api("POST", "/chat/completions", { auth, body, headers: rcHeaders }),
+    );
     if (isJsonMode() || values.raw) {
       printJSON(data);
     } else {
@@ -671,7 +678,11 @@ export async function chatCommand(argv) {
     return 0;
   }
 
-  const meta = await streamResponse(body, auth);
+  const meta = await streamResponse(
+    body,
+    auth,
+    values["response-cache"] ? { "X-OpenRouter-Cache": "true" } : undefined,
+  );
   if (values.usage && meta.usage) printUsage(meta.model, meta.usage);
   if (ERROR_FINISH_REASONS.includes(meta.finishReason)) {
     process.stderr.write(`error: generation stopped (${meta.finishReason})\n`);

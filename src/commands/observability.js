@@ -35,6 +35,13 @@ create / update options:
                                     {"publicKey":"pk-lf-...","secretKey":"sk-lf-...",
                                     "baseUrl":"https://cloud.langfuse.com"}. Clickhouse and
                                     Snowflake accept "shouldIncludeCacheWriteTokens": true.
+                                    For s3, key auth: {"accessKeyId":"...",
+                                    "secretAccessKey":"...",...} or IAM role auth:
+                                    {"authMode":"iam_role","provider":"aws",
+                                    "roleArn":"arn:aws:iam::<acct>:role/<name>",
+                                    "region":"<region>","externalId":"<id>"} (GovCloud and
+                                    China ARNs rejected; trust policy must require the
+                                    external id).
                                     On update, masked values are ignored and unset fields
                                     keep their value.
       --name <name>                 (update only)

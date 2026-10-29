@@ -73,7 +73,7 @@ and run `openrouter login --management`.
 | **OAuth PKCE login** | `openrouter login` opens the browser, catches the callback locally, exchanges the code, and stores the key - `0600` perms in `~/.config/openrouter/`. No paste-an-API-key dance. |
 | **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` auto-pick the management key; everything else uses the user key. `--key` always wins. |
 | **Streaming + JSON modes** | Streams in a TTY, switches to JSON when piped or `--json` is set. No global flag plumbing - works on every command. |
-| **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), server tools (`--server-tool web_search`), deferred tool loading, structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), image output (`--modalities text,image`), reasoning effort, automatic prompt caching (`--cache --cache-ttl 1h`) and OpenAI explicit caching (`--cache-ttl 30m|12h`), alignment rules (`--rule`), provider routing, fallback models, service tiers, sessions and traces, full sampling controls. |
+| **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), server tools (`--server-tool web_search`), deferred tool loading, structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), image output (`--modalities text,image`), reasoning effort, automatic prompt caching (`--cache --cache-ttl 1h`), OpenAI explicit caching (`--cache-ttl 30m|12h`) and free repeat responses (`--response-cache`), alignment rules (`--rule`), provider routing, fallback models, service tiers, sessions and traces, full sampling controls. |
 | **Interactive REPL** | `openrouter chat -i` - slash commands `/model <id>`, `/reset`, `/exit`. History preserved per session. |
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
 | **Batches** | `batches {create,list,get,wait,results,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
@@ -81,7 +81,7 @@ and run `openrouter login --management`.
 | **Model discovery with detail** | `models list` (filter, sort by price/context), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
 | **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
-| **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs. |
+| **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs (`--image`) and named image assets (`--assets`). |
 | **Server tools catalog** | `tools list` / `tools get <name>` - every OpenRouter-run tool (web search, fetch, datetime, ...) with params, engines and pricing. |
 | **Hosted shell files** | `containers {list,get,download,promote}` retrieves and promotes files produced by OpenRouter's hosted shell tools. |
 | **Spend + activity + generations** | `credits` for balance, `whoami` for daily/weekly/monthly usage + rate limit, `keys get <hash>` for per-key spend, `activity --api-key-hash <hash>` for daily aggregates, `generation <id> [--content]` for full per-request metadata + input/output. |
@@ -138,6 +138,7 @@ openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
 # Discovery
 openrouter models --filter claude --sort prompt
 openrouter models user --order newest
+openrouter models user --client codex          # only models a coding harness offers
 openrouter models show anthropic/claude-sonnet-4.5
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter providers
@@ -150,6 +151,7 @@ openrouter activity --date 2026-04-28 --api-key-hash <hash>
 # Management (provisioning key required)
 openrouter keys create "agent-key" --limit 25 --limit-reset monthly
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
+openrouter guardrails update <id> --harness-models   # harness clients see only first-party models
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini
 openrouter workspaces budgets set staging monthly --limit 100
 openrouter observability create "langfuse" --type langfuse --config @langfuse.json

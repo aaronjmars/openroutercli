@@ -239,6 +239,7 @@ openrouter models --free                                # only :free models
 openrouter models --input-modalities image              # image-INPUT (vision) models
 openrouter models --output-modalities image             # image-OUTPUT models
 openrouter models user --order newest                   # account-filtered models, server-side sort
+openrouter models user --client codex                   # models the named harness offers (claude_code|claude_desktop|codex); honors --harness-models guardrails
 openrouter models --supported tools                     # filter by capability
 # Full detail for one model: pricing breakdown, architecture, supported params,
 # reasoning config, supported voices
@@ -257,6 +258,7 @@ openrouter datasets daily --period week --category programming
 openrouter analytics meta
 openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questions.json   # alias: systemone
 openrouter decisions --model <vision-decider> --state '...' --image ./chart.png --questions @q.json
+openrouter decisions --model typesafe/jev-1.14 --state '... image: logo' --assets '{"logo":"./logo.png"}' --questions @q.json
 openrouter containers list <container-id>
 
 # Supporting metadata
@@ -315,6 +317,7 @@ openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-z
 openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --include-byok
 openrouter guardrails update <id> --regions europe --builtin-filters email:redact,secrets:block --no-paid-training
 openrouter guardrails update <id> --allow-safety-retention-google --no-allow-safety-retention-other
+openrouter guardrails update <id> --harness-models      # codex/claude harnesses only see their vendor's models
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
 
 openrouter workspaces list
