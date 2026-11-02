@@ -29,7 +29,7 @@ TRIGGER when the user asks to:
 - browse server tools (web search, fetch, datetime, ...) and use them in chat
 - set workspace budgets or send traces to an observability destination
 - query management analytics
-- submit structured Decisions requests or retrieve hosted-container files
+- submit structured Decisions requests, extract typed fields from text or PDFs, or retrieve hosted-container files
 - log in to OpenRouter from a fresh machine (OAuth PKCE in the browser)
 
 SKIP when the user is already using the OpenAI / Anthropic / Cohere SDKs
@@ -82,7 +82,7 @@ command automatically.
 
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
-| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
+| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `extract`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
 | **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
@@ -261,6 +261,8 @@ openrouter analytics meta
 openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questions.json   # alias: systemone
 openrouter decisions --model <vision-decider> --state '...' --image ./chart.png --questions @q.json
 openrouter decisions --model typesafe/jev-1.14 --state '... image: logo' --assets '{"logo":"./logo.png"}' --questions @q.json
+openrouter extract -m scaledown/extract --state '...' --fields '{"invoice":{"type":"text"}}'   # alpha; alias: extractions
+openrouter extract -m scaledown/extract --assets '{"doc":"./invoice.pdf"}' --fields @fields.json   # file-only (state = asset key)
 openrouter containers list <container-id>
 
 # Supporting metadata
