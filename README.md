@@ -18,7 +18,7 @@
 
 <p align="center">
   <strong>Every OpenRouter endpoint, on the command line - for humans and LLM agents</strong><br>
-  Browser-based OAuth login, inference, discovery, analytics, benchmarks, public datasets, Decisions, container files, account management, and a raw <code>request</code> escape hatch. <code>--json</code> on every command. Zero npm dependencies.
+  Browser-based OAuth login, inference, discovery, analytics, benchmarks, public datasets, Decisions, Extractions, container files, account management, and a raw <code>request</code> escape hatch. <code>--json</code> on every command. Zero npm dependencies.
 </p>
 
 ---
@@ -81,7 +81,7 @@ and run `openrouter login --management`.
 | **Model discovery with detail** | `models list` (filter, sort by price/context), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
 | **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
-| **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs (`--image`) and named image assets (`--assets`). |
+| **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs (`--image`) and named image assets (`--assets`). `extract` (alias `extractions`, alpha) pulls typed fields (text, number, date, list, estimate, forecast...) out of text or attached image/PDF assets. |
 | **Server tools catalog** | `tools list` / `tools get <name>` - every OpenRouter-run tool (web search, fetch, datetime, ...) with params, engines and pricing. |
 | **Hosted shell files** | `containers {list,get,download,promote}` retrieves and promotes files produced by OpenRouter's hosted shell tools. |
 | **Spend + activity + generations** | `credits` for balance, `whoami` for daily/weekly/monthly usage + rate limit, `keys get <hash>` for per-key spend, `activity --api-key-hash <hash>` for daily aggregates, `generation <id> [--content]` for full per-request metadata + input/output. |
@@ -214,6 +214,7 @@ Endpoint coverage map:
 | `GET/POST/PATCH/DELETE /byok[/{id}]` | `openrouter byok ...` |
 | `GET /presets[/{slug}]` + versions, `POST /presets/{slug}/{chat/completions,messages,responses}` | `openrouter presets {list,get,versions,create}` |
 | `POST /systemone` (and `POST /api/alpha/decisions` with `--alpha`) | `openrouter systemone` / `openrouter decisions` |
+| `POST /api/alpha/extractions` | `openrouter extract` / `openrouter extractions` |
 | `GET /containers/{id}/files[/{file}]` + content/promote | `openrouter containers ...` |
 | `GET /organization/members` | `openrouter org members` |
 | `GET/PATCH /organization/settings` | `openrouter org settings` |

@@ -26,6 +26,7 @@ import {
   datasetsCommand,
 } from "./commands/data.js";
 import { decisionsCommand, systemoneCommand } from "./commands/decisions.js";
+import { extractionsCommand } from "./commands/extractions.js";
 import { batchesCommand } from "./commands/batches.js";
 import { toolsCommand } from "./commands/tools.js";
 import { observabilityCommand } from "./commands/observability.js";
@@ -76,6 +77,8 @@ const COMMANDS = {
   decisions: decisionsCommand,
   decision: decisionsCommand,
   systemone: systemoneCommand,
+  extract: extractionsCommand,
+  extractions: extractionsCommand,
   batches: batchesCommand,
   batch: batchesCommand,
   tools: toolsCommand,
@@ -129,6 +132,7 @@ Discovery:
   classifications [options]                Task classification market share
   datasets <sub>                           Public usage datasets
   systemone                                System One structured decisions (alias: decisions)
+  extract                                  Typed field extraction, alpha (alias: extractions)
   containers <sub>                         Hosted shell output files
   files <sub>                              Workspace files
   zdr                                      Preview Zero-Data-Retention impact
