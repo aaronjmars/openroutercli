@@ -78,7 +78,7 @@ and run `openrouter login --management`.
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
 | **Batches** | `batches {create,list,get,wait,results,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
 | **Embeddings + rerank + speech + video** | `embed` (text or images), `rerank`, `speech` (tone instructions, multi-speaker turns, voice references), `transcribe` (URL input, speaker labels, key terms, word timestamps), `video {create,wait,download}` (resolution, first/last frame, references, audio, extend) - async video jobs poll-until-done with `video wait <jobId>`. |
-| **Model discovery with detail** | `models list` (filter, sort by price/context), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
+| **Model discovery with detail** | `models list` (filter, sort by price/context, `--endpoints` by API path served), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
 | **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
 | **Structured decisions** | `decisions` (alias `systemone`) calls System One for typed choice, score, and yes/no outputs, with optional image inputs (`--image`) and named image assets (`--assets`). `extract` (alias `extractions`, alpha) pulls typed fields (text, number, date, list, estimate, forecast...) out of text or attached image/PDF assets. |
@@ -139,6 +139,7 @@ openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
 openrouter models --filter claude --sort prompt
 openrouter models user --order newest
 openrouter models user --client codex          # only models a coding harness offers
+openrouter models --endpoints /api/alpha/extractions   # models served on an API path
 openrouter models show anthropic/claude-sonnet-4.5
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 
