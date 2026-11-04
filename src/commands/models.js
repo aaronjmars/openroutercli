@@ -50,6 +50,9 @@ Options for list:
   --providers <csv>          Hosting provider names
   --distillable <true|false> Filter by distillation capability
   --zdr                      Only models with ZDR endpoints
+  --endpoints <csv>          Only models served on every listed API path, e.g.
+                             /api/v1/messages or /api/alpha/extractions
+                             (without --output-modalities: every modality)
   --region <region>          Only models with endpoints in a data region: eu | us
   --order <sort>             Server-side sort: most-popular|newest|top-weekly|
                              pricing-low-to-high|pricing-high-to-low|
@@ -96,6 +99,7 @@ function listQuery(values) {
   if (values.distillable !== undefined) query.distillable = values.distillable;
   if (values.zdr) query.zdr = "true";
   if (values.region) query.region = values.region;
+  if (values.endpoints) query.endpoints = values.endpoints;
   return query;
 }
 
@@ -117,6 +121,7 @@ const LIST_OPTIONS = {
   distillable: { type: "string" },
   zdr: { type: "boolean" },
   region: { type: "string" },
+  endpoints: { type: "string" },
   "min-age-days": { type: "string" },
   "max-age-days": { type: "string" },
   "min-intelligence-index": { type: "string" },
@@ -206,6 +211,12 @@ function renderModelDetail(m) {
   outln(c.bold("supported_parameters"));
   outln("  " + ((m.supported_parameters || []).join(", ") || "-"));
   outln("");
+
+  if (m.endpoints && m.endpoints.length) {
+    outln(c.bold("served on"));
+    outln("  " + m.endpoints.join(", "));
+    outln("");
+  }
 
   if (m.reasoning && Object.keys(m.reasoning).length) {
     outln(c.bold("reasoning"));

@@ -243,8 +243,9 @@ openrouter models --output-modalities image             # image-OUTPUT models
 openrouter models user --order newest                   # account-filtered models, server-side sort
 openrouter models user --client codex                   # models the named harness offers (claude_code|claude_desktop|codex); honors --harness-models guardrails
 openrouter models --supported tools                     # filter by capability
+openrouter models --endpoints /api/v1/messages          # only models served on these API paths (csv, all must match)
 # Full detail for one model: pricing breakdown, architecture, supported params,
-# reasoning config, supported voices
+# API paths it is served on, reasoning config, supported voices
 openrouter models show anthropic/claude-sonnet-4.5
 
 # Supported request parameters (undocumented endpoint, may change)
