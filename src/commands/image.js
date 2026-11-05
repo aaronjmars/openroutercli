@@ -38,7 +38,12 @@ create options:
       --image <url|path> Reference image for image-to-image (repeatable, max 16);
                          local files are sent as data URLs
       --quality <q>      auto | low | medium | high | xhigh | max
-      --format <fmt>     png | jpeg | webp | svg
+      --format <fmt>     png | jpeg | webp | svg | gif (gif = animation on models
+                         that support it, e.g. openai/gpt-image-2.6-*)
+      --frames <n>       Animation frames, 2-64 (gif only)
+      --frame-ms <ms>    Display time per frame, 20-2000 ms (gif only)
+      --markup <url|path> Transparent PNG overlay (arrows, circles) the size of
+                         the first --image, guiding where an edit applies
       --compression <n>  0-100, webp/jpeg only
       --background <b>   auto | transparent | opaque
       --seed <n>
@@ -120,6 +125,9 @@ export async function imageCommand(argv) {
     image: { type: "string", multiple: true },
     quality: { type: "string" },
     format: { type: "string" },
+    frames: { type: "string" },
+    "frame-ms": { type: "string" },
+    markup: { type: "string" },
     compression: { type: "string" },
     background: { type: "string" },
     seed: { type: "string" },
@@ -146,6 +154,12 @@ export async function imageCommand(argv) {
   }
   if (values.quality) body.quality = values.quality;
   if (values.format) body.output_format = values.format;
+  if (values.frames) body.frame_count = numberOption(values.frames, "--frames");
+  if (values["frame-ms"]) body.frame_duration_ms = numberOption(values["frame-ms"], "--frame-ms");
+  if (values.markup) {
+    if (!body.input_references) throw new Error("--markup needs at least one --image to edit");
+    body.markup = { type: "image_url", image_url: { url: await mediaUrl(values.markup) } };
+  }
   if (values.compression)
     body.output_compression = numberOption(values.compression, "--compression");
   if (values.background) body.background = values.background;
