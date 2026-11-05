@@ -222,6 +222,9 @@ openrouter transcribe ./talk.mp3 -m elevenlabs/scribe-v2 --keyterms OpenRouter,B
 # Image generation (writes image-0.png, ...): tier or exact size, reference images
 openrouter image "a red bike on a beach" -m google/gemini-2.5-flash-image -o bike.png
 openrouter image "same bike, at night" -m google/gemini-2.5-flash-image --image ./bike.png --resolution 2K
+# Animated GIF (2-64 frames, 20-2000 ms each) and a markup overlay guiding an edit (openai/gpt-image-2.6-*)
+openrouter image "a spinning coin" -m openai/gpt-image-2.6-flare --format gif --frames 8 --frame-ms 100 -o coin.gif
+openrouter image "put a hat here" -m openai/gpt-image-2.6-flare --image ./cat.png --markup ./circle.png
 
 # Video jobs: frames, references, audio, extend
 openrouter video create "a sunset over mountains" -m google/veo-3 --resolution 1080p --audio

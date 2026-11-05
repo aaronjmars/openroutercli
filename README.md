@@ -131,6 +131,10 @@ openrouter chat "What is 2+2?" -m openai/gpt-4o-mini \
 openrouter tools list
 openrouter chat "What's new today?" -m openai/gpt-4o-mini --server-tool web_search
 
+# Images: animated GIF output and markup-guided edits (gpt-image-2.6)
+openrouter image "a spinning coin" -m openai/gpt-image-2.6-flare --format gif --frames 8 --frame-ms 100 -o coin.gif
+openrouter image "put a hat here" -m openai/gpt-image-2.6-flare --image ./cat.png --markup ./circle.png
+
 # Batches at about half price
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
