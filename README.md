@@ -85,7 +85,7 @@ and run `openrouter login --management`.
 | **Server tools catalog** | `tools list` / `tools get <name>` - every OpenRouter-run tool (web search, fetch, datetime, ...) with params, engines and pricing. |
 | **Hosted shell files** | `containers {list,get,download,promote}` retrieves and promotes files produced by OpenRouter's hosted shell tools. |
 | **Spend + activity + generations** | `credits` for balance, `whoami` for daily/weekly/monthly usage + rate limit, `keys get <hash>` for per-key spend, `activity --api-key-hash <hash>` for daily aggregates, `generation <id> [--content]` for full per-request metadata + input/output. |
-| **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR, data regions, content filters), `workspaces` (defaults, members, budgets, disabled tools), `observability` destinations (Langfuse, Datadog, ...), `org members` / `org settings`, `auth-code` to mint claim links. All require a management key. |
+| **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR, data regions, content filters, typed budget / model-availability / moderation policies), `workspaces` (defaults, members, budgets, disabled tools), `observability` destinations (Langfuse, Datadog, ...), `org members` / `org settings`, `auth-code` to mint claim links. All require a management key. |
 | **Raw escape hatch** | `openrouter request <METHOD> <path> --body @file.json --query k=v --header k:v` - talk to any current or future endpoint without waiting for a CLI release. |
 | **Agent-friendly errors** | Stable exit codes (1 usage, 2 API, 3 no key, 4 job failed). API error messages surfaced verbatim. `OPENROUTER_DEBUG=1` for stack traces. |
 | **Zero npm dependencies** | Pure Node 20+ - built-in `fetch`, `parseArgs`, `crypto`. Cold install in seconds. Easy to audit. |
@@ -160,6 +160,8 @@ openrouter activity --date 2026-04-28 --api-key-hash <hash>
 openrouter keys create "agent-key" --limit 25 --limit-reset monthly
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
 openrouter guardrails update <id> --harness-models   # harness clients see only first-party models
+openrouter guardrails policies create "daily-10" --type budget --workspace <uuid> \
+  --config '{"limit_usd":10,"reset_interval":"daily","include_byok_in_budgets":false}'
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini
 openrouter workspaces budgets set staging monthly --limit 100
 openrouter observability create "langfuse" --type langfuse --config @langfuse.json
@@ -214,6 +216,7 @@ Endpoint coverage map:
 | `POST /images`, `GET /images/models` | `openrouter image [models]` |
 | `GET/POST/PATCH/DELETE /keys[/{hash}]` | `openrouter keys {list,get,create,update,delete}` |
 | `GET/POST/PATCH/DELETE /guardrails[/{id}]` + assignments | `openrouter guardrails ...` |
+| `GET/POST/PUT/DELETE /guardrails/policies/{budget,model-availability,moderation,account}[/{id}]` + `assignments/{api-keys,members}` | `openrouter guardrails policies ...` |
 | `GET/POST/PATCH/DELETE /workspaces[/{id}]` + members + budgets | `openrouter workspaces ...` |
 | `GET/POST/PATCH/DELETE /observability/destinations[/{id}]` | `openrouter observability ...` |
 | `GET/POST/PATCH/DELETE /byok[/{id}]` | `openrouter byok ...` |

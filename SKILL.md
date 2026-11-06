@@ -328,6 +328,20 @@ openrouter guardrails update <id> --allow-safety-retention-google --no-allow-saf
 openrouter guardrails update <id> --harness-models      # codex/claude harnesses only see their vendor's models
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
 
+# Typed policies (budget | model-availability | moderation); --workspace is required,
+# --account works on workspace-wide policies instead
+openrouter guardrails policies list --type budget --workspace <uuid>
+openrouter guardrails policies list --account
+openrouter guardrails policies get <id> --type moderation --workspace <uuid>
+openrouter guardrails policies create "daily-10" --type budget --workspace <uuid> \
+  --config '{"limit_usd":10,"reset_interval":"daily","include_byok_in_budgets":false}'
+openrouter guardrails policies update <id> --type model-availability --workspace <uuid> \
+  --name "eu-only" --config '{"allowed_data_regions":["europe"]}'   # PUT: replaces name + config
+openrouter guardrails policies assignment key <key-hash> --type budget --workspace <uuid>
+openrouter guardrails policies assign member <user-id> <policy-id> --type budget --workspace <uuid> [--unassign]
+# --unassign of the last explicit policy also opts the subject out of the workspace default;
+# assign the default policy id again to undo that
+
 openrouter workspaces list
 openrouter workspaces create "staging" --slug staging --default-text-model openai/gpt-4o-mini
 openrouter workspaces update staging --disable-tools web_search --broadcast --io-logging-rate 0.1

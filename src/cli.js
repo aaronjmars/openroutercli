@@ -140,7 +140,7 @@ Discovery:
 Management (require a management key):
   keys <sub>             list / get / create / update / delete
   byok <sub>             list / get / create / update / delete (provider integrations)
-  guardrails <sub>       list / get / create / update / delete / assignments
+  guardrails <sub>       list / get / create / update / delete / assignments / policies
   workspaces <sub>       list / get / create / update / delete / members / add-members /
                          remove-members / budgets
   observability <sub>    list / get / create / update / delete trace destinations. Alias: obs
