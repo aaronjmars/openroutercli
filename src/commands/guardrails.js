@@ -8,6 +8,7 @@ import {
 } from "../args.js";
 import { api } from "../api.js";
 import { outln, printResult, table } from "../output.js";
+import { policiesCommand } from "./policies.js";
 
 const HELP = `Usage: openrouter guardrails <subcommand> [options]
 
@@ -29,6 +30,9 @@ Subcommands:
   key-assignments <id>                List key assignments for a guardrail
   member-assignments <id>             List member assignments for a guardrail
                                       (both take --offset/--limit)
+  policies <sub>                      Typed policies (budget, model-availability,
+                                      moderation, workspace-wide) and per-key /
+                                      per-member assignments. See: guardrails policies --help
 
 create / update options:
   --name <name>             (update only)
@@ -209,6 +213,8 @@ export async function guardrailsCommand(argv) {
     process.stdout.write(HELP);
     return sub ? 0 : 1;
   }
+
+  if (sub === "policies") return policiesCommand(rest);
 
   if (rest.includes("-h") || rest.includes("--help")) {
     process.stdout.write(HELP);
