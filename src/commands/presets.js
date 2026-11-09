@@ -1,4 +1,10 @@
-import { parseArgs, authFromValues, loadJson } from "../args.js";
+import {
+  parseArgs,
+  authFromValues,
+  loadJson,
+  PAGINATION_OPTIONS,
+  paginationQuery,
+} from "../args.js";
 import { api } from "../api.js";
 import { outln, printResult, table } from "../output.js";
 
@@ -7,19 +13,24 @@ const HELP = `Usage: openrouter presets <subcommand> [options]
 View and create server-saved config presets.
 
 Subcommands:
-  list                            List presets (default)
+  list [--offset N] [--limit N]   List presets (default)
   get <slug>                      Get a single preset
-  versions <slug>                 List versions for a preset
+  versions <slug> [--offset N] [--limit N]
+                                  List versions for a preset
   version <slug> <version>        Get a specific preset version
   create <slug> --body <json|@file> [--api chat|messages|responses]
                                   Create a preset from an inference request body.
                                   An existing slug gets a new version.
+                                  Needs a read-write management key (inference
+                                  keys are rejected).
 
 create options:
       --body <json|@file>   A normal request body for that API. Only preset fields
                             (model, provider, sampling params, ...) are kept;
                             messages, input and stream are ignored.
       --api <a>             chat (default) | messages | responses
+      --workspace <uuid>    Workspace to create it in (default: the key's workspace
+                            for a key limited to one, else the account default)
 
 Example:
   openrouter presets create fast-cheap --body '{"model":"openai/gpt-5-nano","temperature":0.2,"provider":{"sort":"price"}}'
@@ -73,6 +84,7 @@ export async function presetsCommand(argv) {
     const { values, positionals } = parseArgs(rest, {
       body: { type: "string" },
       api: { type: "string" },
+      workspace: { type: "string" },
     });
     const slug = positionals[0];
     if (!slug) throw new Error("slug required");
@@ -83,7 +95,9 @@ export async function presetsCommand(argv) {
     const body = buildPresetBody(apiName, await loadJson(values.body, "--body"));
     const data = await api("POST", `/presets/${encodeURIComponent(slug)}/${route}`, {
       auth: authFromValues(values),
+      requiresManagement: true,
       body,
+      query: values.workspace ? { workspace_id: values.workspace } : undefined,
     });
     printResult(data, () => {
       const p = data && (data.data || data);
@@ -97,10 +111,12 @@ export async function presetsCommand(argv) {
   }
 
   if (sub === "versions") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, PAGINATION_OPTIONS);
     if (!positionals[0]) throw new Error("slug required");
+    const query = paginationQuery(values);
     const data = await api("GET", `/presets/${encodeURIComponent(positionals[0])}/versions`, {
       auth: authFromValues(values),
+      query: Object.keys(query).length ? query : undefined,
     });
     printResult(data, () => {
       const rows = data.data || [];
@@ -126,9 +142,11 @@ export async function presetsCommand(argv) {
   }
 
   if (sub === "list") {
-    const { values } = parseArgs(rest, {});
+    const { values } = parseArgs(rest, PAGINATION_OPTIONS);
+    const query = paginationQuery(values);
     const data = await api("GET", "/presets", {
       auth: authFromValues(values),
+      query: Object.keys(query).length ? query : undefined,
     });
     printResult(data, () => {
       const rows = data.data || [];

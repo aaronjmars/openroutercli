@@ -82,8 +82,8 @@ command automatically.
 
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
-| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets`, `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `extract`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets` (read), `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `extract`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
+| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code`, `presets create` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
@@ -376,7 +376,7 @@ openrouter byok delete <id>
 
 The `--api-key` flag is the upstream provider secret (never echoed back).
 
-### Files, presets (user key)
+### Files, presets (user key; presets create needs a management key)
 
 ```bash
 # Files - backing store for file/PDF inputs
@@ -386,10 +386,11 @@ openrouter files download <file_id> -o report.pdf
 openrouter files delete <file_id>
 
 # Presets - saved config profiles. Invoke via @preset/<slug> as a model.
-openrouter presets list
+openrouter presets list [--offset N] [--limit N]
 openrouter presets get <slug>
-openrouter presets versions <slug>
+openrouter presets versions <slug> [--offset N] [--limit N]
 openrouter presets create <slug> --api chat --body @preset.json   # existing slug = new version
+openrouter presets create <slug> --body @preset.json --workspace <uuid>   # into another workspace
 ```
 
 ### Raw escape hatch
