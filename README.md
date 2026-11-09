@@ -71,7 +71,7 @@ and run `openrouter login --management`.
 | Feature | What it does |
 |---|---|
 | **OAuth PKCE login** | `openrouter login` opens the browser, catches the callback locally, exchanges the code, and stores the key - `0600` perms in `~/.config/openrouter/`. No paste-an-API-key dance. |
-| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` auto-pick the management key; everything else uses the user key. `--key` always wins. |
+| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` and `presets create` auto-pick the management key; everything else uses the user key. `--key` always wins. |
 | **Streaming + JSON modes** | Streams in a TTY, switches to JSON when piped or `--json` is set. No global flag plumbing - works on every command. |
 | **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), server tools (`--server-tool web_search`), deferred tool loading, structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), image output (`--modalities text,image`), reasoning effort, automatic prompt caching (`--cache --cache-ttl 1h`), OpenAI explicit caching (`--cache-ttl 30m|12h`) and free repeat responses (`--response-cache`), alignment rules (`--rule`), provider routing, fallback models, service tiers, sessions and traces, full sampling controls. |
 | **Interactive REPL** | `openrouter chat -i` - slash commands `/model <id>`, `/reset`, `/exit`. History preserved per session. |
