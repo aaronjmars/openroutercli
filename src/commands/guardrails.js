@@ -22,7 +22,10 @@ Subcommands:
   create <name> [options]             Create
   update <id> [options]               Update
   delete <id>                         Delete
-  assignments [--keys|--members]      List all assignments (--offset/--limit)
+  assignments [--keys|--members] [--workspace <uuid>]
+                                      List all assignments (--offset/--limit).
+                                      An org key lists every workspace unless
+                                      --workspace is given
   assign-key <id> <hash>...           Assign API keys to a guardrail
   unassign-key <id> <hash>...         Unassign API keys
   assign-member <id> <user>...        Assign org members
@@ -315,6 +318,7 @@ export async function guardrailsCommand(argv) {
       ...PAGINATION_OPTIONS,
       keys: { type: "boolean" },
       members: { type: "boolean" },
+      workspace: { type: "string" },
     });
     if (values.keys && values.members) {
       throw new Error("Pass only one of --keys or --members.");
@@ -322,10 +326,12 @@ export async function guardrailsCommand(argv) {
     const path = values.members
       ? "/guardrails/assignments/members"
       : "/guardrails/assignments/keys";
+    const query = paginationQuery(values);
+    if (values.workspace) query.workspace_id = values.workspace;
     const data = await api("GET", path, {
       auth: authFromValues(values),
       requiresManagement: true,
-      query: paginationQuery(values),
+      query,
     });
     printResult(data);
     return 0;
