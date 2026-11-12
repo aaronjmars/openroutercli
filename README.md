@@ -71,12 +71,12 @@ and run `openrouter login --management`.
 | Feature | What it does |
 |---|---|
 | **OAuth PKCE login** | `openrouter login` opens the browser, catches the callback locally, exchanges the code, and stores the key - `0600` perms in `~/.config/openrouter/`. No paste-an-API-key dance. |
-| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` and `presets create` auto-pick the management key; everything else uses the user key. `--key` always wins. |
+| **Two-slot key management** | User key + management/provisioning key live in separate slots. `keys`, `byok`, `guardrails`, `workspaces`, `observability`, `activity` and `presets create/delete/restore` auto-pick the management key; everything else uses the user key. `--key` always wins. |
 | **Streaming + JSON modes** | Streams in a TTY, switches to JSON when piped or `--json` is set. No global flag plumbing - works on every command. |
 | **Chat with everything** | Tool calls (`--tool @file.json --tool-choice required`), server tools (`--server-tool web_search`), deferred tool loading, structured output (`--schema schema.json`), JSON mode, multimodal images (`--image url\|path`), image output (`--modalities text,image`), reasoning effort, automatic prompt caching (`--cache --cache-ttl 1h`), OpenAI explicit caching (`--cache-ttl 30m|12h`) and free repeat responses (`--response-cache`), alignment rules (`--rule`), provider routing, fallback models, service tiers, sessions and traces, full sampling controls. |
 | **Interactive REPL** | `openrouter chat -i` - slash commands `/model <id>`, `/reset`, `/exit`. History preserved per session. |
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
-| **Batches** | `batches {create,list,get,wait,results,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
+| **Batches** | `batches {create,list,get,wait,results,cancel,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
 | **Embeddings + rerank + speech + video** | `embed` (text or images), `rerank`, `speech` (tone instructions, multi-speaker turns, voice references), `transcribe` (URL input, speaker labels, key terms, word timestamps), `video {create,wait,download}` (resolution, first/last frame, references, audio, extend) - async video jobs poll-until-done with `video wait <jobId>`. |
 | **Model discovery with detail** | `models list` (filter, sort by price/context, `--endpoints` by API path served), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
@@ -138,6 +138,7 @@ openrouter image "put a hat here" -m openai/gpt-image-2.6-flare --image ./cat.pn
 # Batches at about half price
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
+openrouter batches cancel <id>   # stop a running batch (cancellation is enabled per org)
 
 # Discovery
 openrouter models --filter claude --sort prompt
@@ -210,7 +211,7 @@ Endpoint coverage map:
 | `POST /audio/speech` | `openrouter speech`, `openrouter tts` |
 | `POST /videos`, `GET /videos/{id}`, `GET /videos/{id}/content`, `GET /videos/models` | `openrouter video {create,get,wait,download,models}` |
 | `GET /generation`, `GET /generation/content`, `POST /generation/feedback` | `openrouter generation [--content]`, `openrouter generation feedback` |
-| `GET/POST/DELETE /batches[/{id}]` | `openrouter batches {list,create,get,wait,results,delete}` |
+| `GET/POST/DELETE /batches[/{id}]`, `POST /batches/{id}/cancel` | `openrouter batches {list,create,get,wait,results,cancel,delete}` |
 | `GET /tools`, `GET /tools/{name}` | `openrouter tools {list,get}` |
 | `POST /audio/transcriptions` | `openrouter transcribe`, `openrouter stt` |
 | `POST /images`, `GET /images/models` | `openrouter image [models]` |
@@ -220,7 +221,7 @@ Endpoint coverage map:
 | `GET/POST/PATCH/DELETE /workspaces[/{id}]` + members + budgets | `openrouter workspaces ...` |
 | `GET/POST/PATCH/DELETE /observability/destinations[/{id}]` | `openrouter observability ...` |
 | `GET/POST/PATCH/DELETE /byok[/{id}]` | `openrouter byok ...` |
-| `GET /presets[/{slug}]` + versions, `POST /presets/{slug}/{chat/completions,messages,responses}` | `openrouter presets {list,get,versions,create}` |
+| `GET/DELETE /presets[/{slug}]` + versions, `POST /presets/{slug}/{chat/completions,messages,responses,restore}` | `openrouter presets {list,get,versions,version,create,delete,restore}` |
 | `POST /systemone` (and `POST /api/alpha/decisions` with `--alpha`) | `openrouter systemone` / `openrouter decisions` |
 | `POST /api/alpha/extractions` | `openrouter extract` / `openrouter extractions` |
 | `GET /containers/{id}/files[/{file}]` + content/promote | `openrouter containers ...` |

@@ -12,8 +12,13 @@ by an extraction-style System One model such as scaledown/extract. The
 request shape is alpha and may change.
 
 Field types: text, number, date, time, datetime, duration, list, estimate,
-forecast. Which types a model answers is model-specific (400 otherwise):
-scaledown/extract returns text spans only and takes no --reference-date.
+forecast. Which types a model answers is model-specific (400 otherwise).
+Launch models:
+  cloudflare/clairic        all field types; text plus up to 4 png/jpeg images
+                            (no PDFs); the only one returning p_null
+  scaledown/extract         text and list fields; text, or one PDF or image
+  inception/mercury-decide  text and list fields; text only
+scaledown/extract and inception/mercury-decide take no --reference-date.
 With one asset and no --state, the request is file-only (state = its key).
 
 Options:

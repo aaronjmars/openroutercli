@@ -10,7 +10,7 @@ import { outln, printResult, table } from "../output.js";
 
 const HELP = `Usage: openrouter presets <subcommand> [options]
 
-View and create server-saved config presets.
+View, create, archive and restore server-saved config presets.
 
 Subcommands:
   list [--offset N] [--limit N]   List presets (default)
@@ -21,19 +21,28 @@ Subcommands:
   create <slug> --body <json|@file> [--api chat|messages|responses]
                                   Create a preset from an inference request body.
                                   An existing slug gets a new version.
-                                  Needs a read-write management key (inference
-                                  keys are rejected).
+  delete <slug>                   Archive a preset: it stops resolving for
+                                  inference and is hidden from get and list.
+                                  Versions are kept and the slug stays taken.
+  restore <slug>                  Re-activate an archived preset (no new version;
+                                  the designated version is unchanged)
+
+create, delete and restore need a read-write management key (inference keys
+are rejected). A disabled preset returns 409 on delete and restore.
+
+Options (every subcommand):
+      --workspace <uuid>    Workspace to act in (default: the key's workspace
+                            for a key limited to one, else the account default)
 
 create options:
       --body <json|@file>   A normal request body for that API. Only preset fields
                             (model, provider, sampling params, ...) are kept;
                             messages, input and stream are ignored.
       --api <a>             chat (default) | messages | responses
-      --workspace <uuid>    Workspace to create it in (default: the key's workspace
-                            for a key limited to one, else the account default)
 
-Example:
+Examples:
   openrouter presets create fast-cheap --body '{"model":"openai/gpt-5-nano","temperature":0.2,"provider":{"sort":"price"}}'
+  openrouter presets delete fast-cheap && openrouter presets restore fast-cheap
 `;
 
 const PRESET_APIS = {
@@ -56,6 +65,13 @@ export function buildPresetBody(apiName, body) {
   return out;
 }
 
+const WORKSPACE_OPTION = { workspace: { type: "string" } };
+
+function workspaceQuery(values, query = {}) {
+  if (values.workspace) query.workspace_id = values.workspace;
+  return Object.keys(query).length ? query : undefined;
+}
+
 export async function presetsCommand(argv) {
   const sub = argv[0] && !argv[0].startsWith("-") ? argv[0] : "list";
   const rest = sub === argv[0] ? argv.slice(1) : argv;
@@ -71,12 +87,33 @@ export async function presetsCommand(argv) {
   }
 
   if (sub === "get") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, WORKSPACE_OPTION);
     if (!positionals[0]) throw new Error("slug required");
     const data = await api("GET", `/presets/${encodeURIComponent(positionals[0])}`, {
       auth: authFromValues(values),
+      query: workspaceQuery(values),
     });
     printResult(data);
+    return 0;
+  }
+
+  if (sub === "delete" || sub === "restore") {
+    const { values, positionals } = parseArgs(rest, WORKSPACE_OPTION);
+    const slug = positionals[0];
+    if (!slug) throw new Error("slug required");
+    const path =
+      sub === "delete"
+        ? `/presets/${encodeURIComponent(slug)}`
+        : `/presets/${encodeURIComponent(slug)}/restore`;
+    const data = await api(sub === "delete" ? "DELETE" : "POST", path, {
+      auth: authFromValues(values),
+      requiresManagement: true,
+      query: workspaceQuery(values),
+    });
+    printResult(data, () => {
+      const p = data && (data.data || data);
+      outln(`${sub === "delete" ? "archived" : "restored"} preset ${(p && p.slug) || slug}`);
+    });
     return 0;
   }
 
@@ -84,7 +121,7 @@ export async function presetsCommand(argv) {
     const { values, positionals } = parseArgs(rest, {
       body: { type: "string" },
       api: { type: "string" },
-      workspace: { type: "string" },
+      ...WORKSPACE_OPTION,
     });
     const slug = positionals[0];
     if (!slug) throw new Error("slug required");
@@ -97,7 +134,7 @@ export async function presetsCommand(argv) {
       auth: authFromValues(values),
       requiresManagement: true,
       body,
-      query: values.workspace ? { workspace_id: values.workspace } : undefined,
+      query: workspaceQuery(values),
     });
     printResult(data, () => {
       const p = data && (data.data || data);
@@ -111,12 +148,11 @@ export async function presetsCommand(argv) {
   }
 
   if (sub === "versions") {
-    const { values, positionals } = parseArgs(rest, PAGINATION_OPTIONS);
+    const { values, positionals } = parseArgs(rest, { ...PAGINATION_OPTIONS, ...WORKSPACE_OPTION });
     if (!positionals[0]) throw new Error("slug required");
-    const query = paginationQuery(values);
     const data = await api("GET", `/presets/${encodeURIComponent(positionals[0])}/versions`, {
       auth: authFromValues(values),
-      query: Object.keys(query).length ? query : undefined,
+      query: workspaceQuery(values, paginationQuery(values)),
     });
     printResult(data, () => {
       const rows = data.data || [];
@@ -129,24 +165,23 @@ export async function presetsCommand(argv) {
   }
 
   if (sub === "version") {
-    const { values, positionals } = parseArgs(rest, {});
+    const { values, positionals } = parseArgs(rest, WORKSPACE_OPTION);
     if (!positionals[0]) throw new Error("slug required");
     if (!positionals[1]) throw new Error("version required");
     const data = await api(
       "GET",
       `/presets/${encodeURIComponent(positionals[0])}/versions/${encodeURIComponent(positionals[1])}`,
-      { auth: authFromValues(values) },
+      { auth: authFromValues(values), query: workspaceQuery(values) },
     );
     printResult(data);
     return 0;
   }
 
   if (sub === "list") {
-    const { values } = parseArgs(rest, PAGINATION_OPTIONS);
-    const query = paginationQuery(values);
+    const { values } = parseArgs(rest, { ...PAGINATION_OPTIONS, ...WORKSPACE_OPTION });
     const data = await api("GET", "/presets", {
       auth: authFromValues(values),
-      query: Object.keys(query).length ? query : undefined,
+      query: workspaceQuery(values, paginationQuery(values)),
     });
     printResult(data, () => {
       const rows = data.data || [];

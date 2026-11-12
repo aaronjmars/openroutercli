@@ -83,7 +83,7 @@ command automatically.
 | Slot | Used by | How to obtain |
 | --- | --- | --- |
 | **User key** | `chat`, `messages`, `responses`, `embed`, `rerank`, `speech`, `transcribe`, `image`, `video`, `files`, `presets` (read), `generation`, `credits`, `whoami`, `benchmarks`, `classifications`, `datasets`, `decisions`, `extract`, `containers`, `batches`, `tools` | OAuth (`openrouter login`) or paste from dashboard |
-| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code`, `presets create` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
+| **Management key** | `keys`, `byok`, `guardrails`, `workspaces`, `activity`, `analytics`, `observability`, `org members`, `org settings`, `auth-code`, `presets create/delete/restore` | Dashboard only - <https://openrouter.ai/settings/provisioning-keys>. Cannot be obtained via OAuth. Save with `openrouter login --management`. |
 
 You can store both - they live side by side in the config file. `--key sk-or-...`
 always wins over both. Inference commands prefer the user key; management
@@ -202,6 +202,7 @@ openrouter responses "..." -m openai/gpt-5-mini --verbosity low --truncation aut
 # Batches: async jobs at ~half price (chat, responses, messages, embeddings)
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook   # {custom_id, body} per line
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
+openrouter batches cancel <id>   # stop a running batch; 403 = cancel not enabled for the org, 409 = already ended
 
 # Embeddings (text or images), rerank
 openrouter embed -m openai/text-embedding-3-small "hello" "world"
@@ -266,6 +267,7 @@ openrouter decisions --model typesafe/jev-1.13 --state '...' --questions @questi
 openrouter decisions --model <vision-decider> --state '...' --image ./chart.png --questions @q.json
 openrouter decisions --model typesafe/jev-1.14 --state '... image: logo' --assets '{"logo":"./logo.png"}' --questions @q.json
 openrouter extract -m scaledown/extract --state '...' --fields '{"invoice":{"type":"text"}}'   # alpha; alias: extractions
+# models: cloudflare/clairic (all field types, up to 4 images, no PDF), scaledown/extract and inception/mercury-decide (text + list only)
 openrouter extract -m scaledown/extract --assets '{"doc":"./invoice.pdf"}' --fields @fields.json   # file-only (state = asset key)
 openrouter containers list <container-id>
 
@@ -327,6 +329,7 @@ openrouter guardrails update <id> --regions europe --builtin-filters email:redac
 openrouter guardrails update <id> --allow-safety-retention-google --no-allow-safety-retention-other
 openrouter guardrails update <id> --harness-models      # codex/claude harnesses only see their vendor's models
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
+openrouter guardrails assignments --members --workspace <uuid>   # org keys list every workspace otherwise
 
 # Typed policies (budget | model-availability | moderation); --workspace is required,
 # --account works on workspace-wide policies instead
@@ -376,7 +379,7 @@ openrouter byok delete <id>
 
 The `--api-key` flag is the upstream provider secret (never echoed back).
 
-### Files, presets (user key; presets create needs a management key)
+### Files, presets (user key; presets create/delete/restore need a management key)
 
 ```bash
 # Files - backing store for file/PDF inputs
@@ -386,11 +389,13 @@ openrouter files download <file_id> -o report.pdf
 openrouter files delete <file_id>
 
 # Presets - saved config profiles. Invoke via @preset/<slug> as a model.
-openrouter presets list [--offset N] [--limit N]
+openrouter presets list [--offset N] [--limit N] [--workspace <uuid>]   # --workspace works on every presets subcommand
 openrouter presets get <slug>
 openrouter presets versions <slug> [--offset N] [--limit N]
 openrouter presets create <slug> --api chat --body @preset.json   # existing slug = new version
 openrouter presets create <slug> --body @preset.json --workspace <uuid>   # into another workspace
+openrouter presets delete <slug>    # archive: stops resolving, hidden from list; slug stays taken
+openrouter presets restore <slug>   # re-activate an archived preset (same designated version)
 ```
 
 ### Raw escape hatch

@@ -112,7 +112,7 @@ Inference:
   video <sub>            Video generation jobs (create / get / wait / download / models)
   image <sub>            Image generation (create / models / endpoints). Alias: images
   batches <sub>          Async batch jobs at ~half price (list / create / get / wait /
-                         results / delete). Alias: batch
+                         results / cancel / delete). Alias: batch
 
 Discovery:
   models [list|show|endpoints|parameters|count|user]  List models, full model
@@ -122,7 +122,8 @@ Discovery:
   video models                             List video generation models
   image models                             List image generation models
   providers                                List providers (with HQ + datacenters)
-  presets <sub>                            list / get / versions / create (saved config profiles)
+  presets <sub>                            list / get / versions / create / delete /
+                                           restore (saved config profiles)
   generation <id> [--content]              Generation metadata or content
   generation feedback <id> --category <c>  Report a problem with a generation
   tools [list|get]                         Server tools (web_search, web_fetch, datetime...) + engines

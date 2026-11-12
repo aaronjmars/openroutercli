@@ -13,6 +13,7 @@ Subcommands:
   get <id>                        Status, request counts and usage
   wait <id> [options]             Poll until the batch reaches a final status
   results <id> [-o out.jsonl]     Write the per-request results as JSONL
+  cancel <id>                     Ask the provider to stop a running batch
   delete <id>                     Delete a finished batch and its stored data
 
 list options:
@@ -44,7 +45,14 @@ results options:
 
 Statuses: validating, in_progress, finalizing, completed, failed, expired,
 cancelling, cancelled. Final ones: completed, failed, expired, cancelled.
-There is no cancel endpoint. Results are kept for 30 days.
+Results are kept for 30 days.
+
+cancel: cancellation is enabled per organization (others get 403). The batch
+stays in_progress until the provider confirms, then turns cancelled (or
+completed if it finished first); run \`batches wait <id>\` after. Repeating the
+call is safe. On OpenAI, requests done before the cancel are kept in results
+and billed at the batch price; on most other providers a cancelled batch has
+no results.
 
 Examples:
   openrouter batches create -m openai/gpt-5-nano --file reqs.jsonl
@@ -328,6 +336,37 @@ export async function batchesCommand(argv) {
     await writeFile(out, jsonl);
     if (isJsonMode()) printJSON({ saved: out, results: results.length, failed });
     else info(`Wrote ${results.length} result(s) to ${out} (${failed} failed)`);
+    return 0;
+  }
+
+  if (sub === "cancel") {
+    const { values, positionals } = parseArgs(rest, {});
+    if (!positionals[0]) throw new Error("id required");
+    const id = positionals[0];
+    let data;
+    try {
+      data = await api("POST", `/batches/${encodeURIComponent(id)}/cancel`, {
+        auth: authFromValues(values),
+      });
+    } catch (err) {
+      if (err instanceof APIError && err.status === 403) {
+        throw new APIError(
+          `${err.message}\nBatch cancellation is enabled per organization; ask OpenRouter to turn it on.`,
+          err,
+        );
+      }
+      if (err instanceof APIError && err.status === 409) {
+        throw new APIError(
+          `${err.message}\nThe batch already ended, has not reached the provider yet, or runs on a provider without a cancel call. Check it: openrouter batches get ${id}`,
+          err,
+        );
+      }
+      throw err;
+    }
+    printBatch(data);
+    if (!TERMINAL_STATUSES.includes(data.status)) {
+      info(`Cancel requested. Next: openrouter batches wait ${id}`);
+    }
     return 0;
   }
 
