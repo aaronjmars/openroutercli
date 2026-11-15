@@ -295,7 +295,9 @@ export async function batchesCommand(argv) {
     const start = Date.now();
     let last;
     while (true) {
+      if (Date.now() - start >= timeout) throw new Error("timeout waiting for batch");
       const data = await getBatch(positionals[0], values);
+      if (Date.now() - start >= timeout) throw new Error("timeout waiting for batch");
       const status = data.status;
       const line = `status: ${status} (${counts(data)} completed/failed/total)`;
       if (line !== last) info(line);
@@ -304,8 +306,7 @@ export async function batchesCommand(argv) {
         printBatch(data);
         return FAILED_STATUSES.includes(status) ? 4 : 0;
       }
-      if (Date.now() - start > timeout) throw new Error("timeout waiting for batch");
-      await sleep(interval);
+      await sleep(Math.min(interval, timeout - (Date.now() - start)));
     }
   }
 

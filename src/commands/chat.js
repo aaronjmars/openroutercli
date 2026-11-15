@@ -5,12 +5,13 @@ import {
   authFromValues,
   numberOption,
   shouldStream,
+  readStdinText,
   loadJson,
   REQUEST_FIELD_OPTIONS,
   REQUEST_FIELD_HELP,
   applyRequestFields,
 } from "../args.js";
-import { api, assertNoStreamError, sseStream } from "../api.js";
+import { api, assertNoResponseError, assertNoStreamError, sseStream } from "../api.js";
 import { c, info, isJsonMode, out, outln, printJSON } from "../output.js";
 
 const DEFAULT_MODEL = "openrouter/auto";
@@ -251,9 +252,7 @@ ${REQUEST_FIELD_HELP}      --extra <json|@file> Extra fields merged into the req
 
 async function readStdinIfPiped() {
   if (stdin.isTTY) return null;
-  let data = "";
-  for await (const chunk of stdin) data += chunk;
-  return data.trimEnd() || null;
+  return (await readStdinText()).trimEnd() || null;
 }
 
 // loadJson plus chat's older convenience: a bare value that names a file is
@@ -651,6 +650,7 @@ export async function chatCommand(argv) {
     const data = await withAlignmentErrors(
       api("POST", "/chat/completions", { auth, body, headers: rcHeaders }),
     );
+    assertNoResponseError(data);
     if (isJsonMode() || values.raw) {
       printJSON(data);
     } else {

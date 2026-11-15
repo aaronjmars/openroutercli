@@ -126,9 +126,20 @@ export async function api(method, path, opts = {}) {
 
 // Streaming endpoints report failures as an in-band event rather than a
 // non-2xx status, so nothing above this catches them.
+export function assertNoResponseError(data) {
+  if (!data || typeof data !== "object") return;
+  const err = data.error ?? (data.type === "error" || data.status === "failed" ? data : null);
+  if (!err) return;
+  const message = (typeof err === "string" ? err : err.message) || JSON.stringify(err);
+  throw new APIError(`response error: ${message}`, { body: data });
+}
+
 export function assertNoStreamError(evt) {
   if (!evt) return;
-  const err = evt.error ?? (evt.type === "error" ? evt : null);
+  const err =
+    evt.error ??
+    (evt.type === "error" ? evt : null) ??
+    (evt.type === "response.failed" ? (evt.response?.error ?? evt.response ?? evt) : null);
   if (!err) return;
   const message = (typeof err === "string" ? err : err.message) || JSON.stringify(err);
   throw new APIError(`stream error: ${message}`);

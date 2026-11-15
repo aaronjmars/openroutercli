@@ -1,5 +1,6 @@
 import { parseArgs as nodeParseArgs } from "node:util";
 import { stdin } from "node:process";
+import { StringDecoder } from "node:string_decoder";
 import { isJsonMode } from "./output.js";
 
 const GLOBAL_OPTIONS = {
@@ -57,11 +58,18 @@ export function authFromValues(values) {
   return out;
 }
 
+export async function readStdinText() {
+  const decoder = new StringDecoder("utf8");
+  let data = "";
+  for await (const chunk of stdin) {
+    data += typeof chunk === "string" ? chunk : decoder.write(chunk);
+  }
+  return data + decoder.end();
+}
+
 export async function readStdinIfPiped() {
   if (stdin.isTTY) return null;
-  let data = "";
-  for await (const chunk of stdin) data += chunk;
-  return data.trim() || null;
+  return (await readStdinText()).trim() || null;
 }
 
 export function shouldStream(values) {
