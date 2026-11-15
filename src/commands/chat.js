@@ -647,10 +647,13 @@ export async function chatCommand(argv) {
 
   if (!shouldStream(values)) {
     const rcHeaders = values["response-cache"] ? { "X-OpenRouter-Cache": "true" } : undefined;
+    // Checked inside withAlignmentErrors so an HTTP 200 alignment block
+    // still gets the alignment hint.
     const data = await withAlignmentErrors(
-      api("POST", "/chat/completions", { auth, body, headers: rcHeaders }),
+      api("POST", "/chat/completions", { auth, body, headers: rcHeaders }).then(
+        assertNoResponseError,
+      ),
     );
-    assertNoResponseError(data);
     if (isJsonMode() || values.raw) {
       printJSON(data);
     } else {

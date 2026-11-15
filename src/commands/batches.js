@@ -165,10 +165,11 @@ function printBatch(b) {
 }
 
 // 410 and 402 carry a useful meaning the generic API message hides.
-async function getBatch(id, values) {
+async function getBatch(id, values, signal) {
   try {
     return await api("GET", `/batches/${encodeURIComponent(id)}`, {
       auth: authFromValues(values),
+      signal,
     });
   } catch (err) {
     if (err instanceof APIError && err.status === 410) {
@@ -295,9 +296,15 @@ export async function batchesCommand(argv) {
     const start = Date.now();
     let last;
     while (true) {
-      if (Date.now() - start >= timeout) throw new Error("timeout waiting for batch");
-      const data = await getBatch(positionals[0], values);
-      if (Date.now() - start >= timeout) throw new Error("timeout waiting for batch");
+      const left = timeout - (Date.now() - start);
+      if (left <= 0) throw new Error("timeout waiting for batch");
+      let data;
+      try {
+        data = await getBatch(positionals[0], values, AbortSignal.timeout(left));
+      } catch (err) {
+        if (err && err.name === "TimeoutError") throw new Error("timeout waiting for batch");
+        throw err;
+      }
       const status = data.status;
       const line = `status: ${status} (${counts(data)} completed/failed/total)`;
       if (line !== last) info(line);

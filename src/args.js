@@ -64,7 +64,8 @@ export async function readStdinText() {
   for await (const chunk of stdin) {
     data += typeof chunk === "string" ? chunk : decoder.write(chunk);
   }
-  return data + decoder.end();
+  // Windows editors often prefix a BOM, which JSON.parse rejects.
+  return (data + decoder.end()).replace(/^\uFEFF/, "");
 }
 
 export async function readStdinIfPiped() {
