@@ -207,6 +207,26 @@ test("HTTP 200 alignment blocks keep the alignment hint", async () => {
   assert.match(sink.stderr, /alignment: blocked - call 1 blocked/);
 });
 
+test("messages and responses keep the alignment hint on HTTP 200 blocks", async () => {
+  const blocked = JSON.stringify({
+    error: {
+      code: 403,
+      message: "Blocked by alignment",
+      metadata: { alignment: { calls: [{ call: 1, outcome: "blocked" }] } },
+    },
+  });
+  const runs = [
+    () => messagesCommand(["--body", '{"model":"test/model","messages":[]}', "--no-stream"]),
+    () => responsesCommand(["--body", '{"model":"test/model","input":"hi"}', "--no-stream"]),
+  ];
+  for (const run of runs) {
+    mockResponse(blocked);
+    const sink = {};
+    await assert.rejects(muted(run, sink), isApiError);
+    assert.match(sink.stderr, /alignment: blocked - call 1 blocked/);
+  }
+});
+
 test("failed responses with a null error get a short message", async () => {
   mockResponse(
     JSON.stringify({ id: "resp-1", status: "failed", error: null, pad: "x".repeat(500) }),

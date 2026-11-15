@@ -138,7 +138,8 @@ openrouter image "put a hat here" -m openai/gpt-image-2.6-flare --image ./cat.pn
 # Batches at about half price
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
-openrouter batches cancel <id>   # stop a running batch (cancellation is enabled per org)
+openrouter batches create --endpoint chat -m google/gemini-3.8-flash --input gs://bucket/reqs.jsonl   # input in your own storage (allowlisted Vertex BYOK only)
+openrouter batches cancel <id>   # stop a running batch (cancellation is enabled per org; OpenRouter dropped the route in Nov 2026, so it may 404)
 
 # Discovery
 openrouter models --filter claude --sort prompt
