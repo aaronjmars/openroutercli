@@ -47,5 +47,8 @@ jobs:
         # so this fails on any broken import / ESM extension across the CLI.
         run: node bin/openrouter.js --help > /dev/null
 
+      - name: Regression tests
+        run: npm test
+
       - name: Validate published package contents
         run: npm pack --dry-run

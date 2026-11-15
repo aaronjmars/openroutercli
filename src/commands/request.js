@@ -1,5 +1,4 @@
-import { stdin } from "node:process";
-import { parseArgs, authFromValues } from "../args.js";
+import { parseArgs, authFromValues, readStdinText } from "../args.js";
 import { api } from "../api.js";
 import { printJSON, out } from "../output.js";
 
@@ -20,14 +19,8 @@ Options:
   --raw                   Print raw text response (no JSON parsing)
 `;
 
-async function readStdin() {
-  let data = "";
-  for await (const chunk of stdin) data += chunk;
-  return data;
-}
-
 async function loadBody(value) {
-  if (value === "-") return JSON.parse(await readStdin());
+  if (value === "-") return JSON.parse(await readStdinText());
   if (value.startsWith("@")) {
     const { readFile } = await import("node:fs/promises");
     return JSON.parse(await readFile(value.slice(1), "utf8"));

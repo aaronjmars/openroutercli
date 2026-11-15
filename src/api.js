@@ -124,11 +124,34 @@ export async function api(method, path, opts = {}) {
   }
 }
 
+// A failed body with no error object: name the status and id, and keep the
+// body short instead of dumping the whole response.
+function failureSummary(data) {
+  const body = JSON.stringify(data);
+  const short = body.length > 200 ? `${body.slice(0, 200)}...` : body;
+  return `${data.status ?? data.type}${data.id ? ` (${data.id})` : ""}: ${short}`;
+}
+
+// Returns data, so it chains: api(...).then(assertNoResponseError).
+export function assertNoResponseError(data) {
+  if (!data || typeof data !== "object") return data;
+  const err = data.error ?? (data.type === "error" || data.status === "failed" ? data : null);
+  if (!err) return data;
+  const message =
+    typeof err === "string"
+      ? err
+      : err.message || (err === data ? failureSummary(data) : JSON.stringify(err));
+  throw new APIError(`response error: ${message}`, { body: data });
+}
+
 // Streaming endpoints report failures as an in-band event rather than a
 // non-2xx status, so nothing above this catches them.
 export function assertNoStreamError(evt) {
   if (!evt) return;
-  const err = evt.error ?? (evt.type === "error" ? evt : null);
+  const err =
+    evt.error ??
+    (evt.type === "error" ? evt : null) ??
+    (evt.type === "response.failed" ? (evt.response?.error ?? evt.response ?? evt) : null);
   if (!err) return;
   const message = (typeof err === "string" ? err : err.message) || JSON.stringify(err);
   throw new APIError(`stream error: ${message}`);

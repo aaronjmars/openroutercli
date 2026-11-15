@@ -9,7 +9,7 @@ import {
   REQUEST_FIELD_HELP,
   applyRequestFields,
 } from "../args.js";
-import { api, assertNoStreamError, sseStream } from "../api.js";
+import { api, assertNoResponseError, assertNoStreamError, sseStream } from "../api.js";
 import { c, info, isJsonMode, out, outln, printJSON } from "../output.js";
 import {
   SHARED_OPTIONS,
@@ -283,6 +283,7 @@ export async function messagesCommand(argv) {
       body,
     }),
   );
+  assertNoResponseError(data);
   if (isJsonMode() || values.raw) {
     printJSON(data);
   } else {
@@ -435,6 +436,7 @@ export async function responsesCommand(argv) {
       body,
     }),
   );
+  assertNoResponseError(data);
   if (isJsonMode() || values.raw) {
     printJSON(data);
   } else {

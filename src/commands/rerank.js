@@ -1,7 +1,7 @@
-import { stdin } from "node:process";
 import {
   parseArgs,
   authFromValues,
+  readStdinText,
   numberOption,
   loadJson,
   applyRequestFields,
@@ -29,8 +29,7 @@ Options:
 ${MEDIA_FIELD_HELP}`;
 
 async function readDocsFromStdin() {
-  let data = "";
-  for await (const chunk of stdin) data += chunk;
+  const data = await readStdinText();
   return data
     .split(/\r?\n/)
     .map((l) => l.trim())
