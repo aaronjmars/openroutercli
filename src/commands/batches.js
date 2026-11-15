@@ -299,11 +299,20 @@ export async function batchesCommand(argv) {
       const left = timeout - (Date.now() - start);
       if (left <= 0) throw new Error("timeout waiting for batch");
       let data;
+      // A plain timer, not AbortSignal.timeout: that one does not keep the
+      // event loop alive, so a hung poll could exit before the deadline fires.
+      const controller = new AbortController();
+      const timer = setTimeout(
+        () => controller.abort(new DOMException("deadline reached", "TimeoutError")),
+        left,
+      );
       try {
-        data = await getBatch(positionals[0], values, AbortSignal.timeout(left));
+        data = await getBatch(positionals[0], values, controller.signal);
       } catch (err) {
         if (err && err.name === "TimeoutError") throw new Error("timeout waiting for batch");
         throw err;
+      } finally {
+        clearTimeout(timer);
       }
       const status = data.status;
       const line = `status: ${status} (${counts(data)} completed/failed/total)`;
