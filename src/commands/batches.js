@@ -165,10 +165,11 @@ function printBatch(b) {
 }
 
 // 410 and 402 carry a useful meaning the generic API message hides.
-async function getBatch(id, values) {
+async function getBatch(id, values, signal) {
   try {
     return await api("GET", `/batches/${encodeURIComponent(id)}`, {
       auth: authFromValues(values),
+      signal,
     });
   } catch (err) {
     if (err instanceof APIError && err.status === 410) {
@@ -295,7 +296,24 @@ export async function batchesCommand(argv) {
     const start = Date.now();
     let last;
     while (true) {
-      const data = await getBatch(positionals[0], values);
+      const left = timeout - (Date.now() - start);
+      if (left <= 0) throw new Error("timeout waiting for batch");
+      let data;
+      // A plain timer, not AbortSignal.timeout: that one does not keep the
+      // event loop alive, so a hung poll could exit before the deadline fires.
+      const controller = new AbortController();
+      const timer = setTimeout(
+        () => controller.abort(new DOMException("deadline reached", "TimeoutError")),
+        left,
+      );
+      try {
+        data = await getBatch(positionals[0], values, controller.signal);
+      } catch (err) {
+        if (err && err.name === "TimeoutError") throw new Error("timeout waiting for batch");
+        throw err;
+      } finally {
+        clearTimeout(timer);
+      }
       const status = data.status;
       const line = `status: ${status} (${counts(data)} completed/failed/total)`;
       if (line !== last) info(line);
@@ -304,8 +322,7 @@ export async function batchesCommand(argv) {
         printBatch(data);
         return FAILED_STATUSES.includes(status) ? 4 : 0;
       }
-      if (Date.now() - start > timeout) throw new Error("timeout waiting for batch");
-      await sleep(interval);
+      await sleep(Math.min(interval, timeout - (Date.now() - start)));
     }
   }
 

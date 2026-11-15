@@ -3,7 +3,7 @@ import crypto from "node:crypto";
 import { spawn } from "node:child_process";
 import readline from "node:readline/promises";
 import { stdin, stdout } from "node:process";
-import { parseArgs, numberOption } from "../args.js";
+import { parseArgs, numberOption, readStdinText } from "../args.js";
 import {
   loadConfig,
   saveConfig,
@@ -67,9 +67,7 @@ function openBrowser(url) {
 }
 
 async function readFromStdin() {
-  let data = "";
-  for await (const chunk of stdin) data += chunk;
-  return data.trim();
+  return (await readStdinText()).trim();
 }
 
 async function promptKey() {

@@ -51,6 +51,7 @@
   },
   "scripts": {
     "start": "node bin/openrouter.js",
+    "test": "node --test",
     "format": "biome format --write .",
     "format:check": "biome ci ."
   },
