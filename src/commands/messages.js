@@ -277,13 +277,14 @@ export async function messagesCommand(argv) {
     return 0;
   }
 
+  // Checked inside withAlignmentErrors so an HTTP 200 alignment block
+  // still gets the alignment hint.
   const data = await withAlignmentErrors(
     api("POST", "/messages", {
       auth: authFromValues(values),
       body,
-    }),
+    }).then(assertNoResponseError),
   );
-  assertNoResponseError(data);
   if (isJsonMode() || values.raw) {
     printJSON(data);
   } else {
@@ -430,13 +431,14 @@ export async function responsesCommand(argv) {
     return 0;
   }
 
+  // Checked inside withAlignmentErrors so an HTTP 200 alignment block
+  // still gets the alignment hint.
   const data = await withAlignmentErrors(
     api("POST", "/responses", {
       auth: authFromValues(values),
       body,
-    }),
+    }).then(assertNoResponseError),
   );
-  assertNoResponseError(data);
   if (isJsonMode() || values.raw) {
     printJSON(data);
   } else {
