@@ -202,7 +202,8 @@ openrouter responses "..." -m openai/gpt-5-mini --verbosity low --truncation aut
 # Batches: async jobs at ~half price (chat, responses, messages, embeddings)
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook   # {custom_id, body} per line
 openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
-openrouter batches cancel <id>   # stop a running batch; 403 = cancel not enabled for the org, 409 = already ended
+openrouter batches create --endpoint chat -m google/gemini-3.8-flash --input gs://bucket/reqs.jsonl   # input already in your storage (gs:// or bq://), allowlisted Vertex BYOK only
+openrouter batches cancel <id>   # stop a running batch; 403 = cancel not enabled for the org, 409 = already ended, 404 = route dropped upstream (Nov 2026)
 
 # Embeddings (text or images), rerank
 openrouter embed -m openai/text-embedding-3-small "hello" "world"

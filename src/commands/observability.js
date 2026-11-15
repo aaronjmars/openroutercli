@@ -35,6 +35,8 @@ create / update options:
                                     {"publicKey":"pk-lf-...","secretKey":"sk-lf-...",
                                     "baseUrl":"https://cloud.langfuse.com"}. Clickhouse and
                                     Snowflake accept "shouldIncludeCacheWriteTokens": true.
+                                    otel-collector can also send OTLP metrics:
+                                    "shouldSendMetrics": true, "metricsEndpoint": "<url>".
                                     For s3, key auth: {"accessKeyId":"...",
                                     "secretAccessKey":"...",...} or IAM role auth:
                                     {"authMode":"iam_role","provider":"aws",

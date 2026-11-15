@@ -86,7 +86,7 @@ ${ALIGNMENT_HELP}      --metadata <json|@file>  String key/value pairs (max 16)
       --tool <json|@file>  Tool definition (repeatable). Function tools can
                            carry "defer_loading": true
       --tool-choice <v>    auto | none | required | <tool name>
-${SERVER_TOOL_HELP}      --include <csv>      Extra output fields to include
+${SERVER_TOOL_HELP}      --include <csv>      Extra output fields to include (e.g. web_search_call.action.sources)
       --store              Persist the response server-side
       --previous-response-id <id>  Continue a stored response
       --background         Run as a background response

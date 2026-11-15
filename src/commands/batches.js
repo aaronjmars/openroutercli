@@ -13,7 +13,8 @@ Subcommands:
   get <id>                        Status, request counts and usage
   wait <id> [options]             Poll until the batch reaches a final status
   results <id> [-o out.jsonl]     Write the per-request results as JSONL
-  cancel <id>                     Ask the provider to stop a running batch
+  cancel <id>                     Ask the provider to stop a running batch (route dropped
+                                  from the OpenRouter API in Nov 2026: may 404)
   delete <id>                     Delete a finished batch and its stored data
 
 list options:
@@ -30,6 +31,10 @@ create options:
       --file <path>             JSONL, one request per line: {"custom_id": "...", "body": {...}}
                                 (a line without "body" is used as the body itself and
                                 gets custom_id req-<n>). Reads stdin when omitted.
+      --input <uri>             Input in your own storage instead of --file:
+                                gs://bucket/object.jsonl or bq://project.dataset.table,
+                                already in provider batch format (allowlisted
+                                Google Vertex BYOK only)
       --completion-window <w>   Default: 24h
       --callback-url <url>      Webhook URL called on terminal status events
       --provider <json|@file>   Routing: {"only": [...], "allow_fallbacks": false}
@@ -238,24 +243,26 @@ export async function batchesCommand(argv) {
       file: { type: "string" },
       "completion-window": { type: "string" },
       "callback-url": { type: "string" },
+      input: { type: "string" },
       provider: { type: "string" },
       only: { type: "string" },
       "no-fallbacks": { type: "boolean" },
     });
     if (positionals.length) throw new Error(`Unexpected argument: ${positionals[0]}`);
     if (!values.model) throw new Error("--model is required");
+    if (values.input && values.file) throw new Error("Pass --input or --file, not both");
     let text;
     let source;
-    if (values.file && values.file !== "-") {
+    if (!values.input && values.file && values.file !== "-") {
       const { readFile } = await import("node:fs/promises");
       text = await readFile(values.file, "utf8");
       source = values.file;
-    } else {
+    } else if (!values.input) {
       text = await readStdinIfPiped();
       source = "stdin";
       if (!text) throw new Error("No requests: pass --file reqs.jsonl or pipe JSONL on stdin");
     }
-    const requests = parseRequests(text, source);
+    const requests = values.input ? null : parseRequests(text, source);
 
     let provider = values.provider ? await loadJson(values.provider, "--provider") : undefined;
     if (values.only || values["no-fallbacks"]) provider = { ...(provider || {}) };
@@ -268,10 +275,12 @@ export async function batchesCommand(argv) {
     if (provider) body.provider = provider;
     if (values["completion-window"]) body.completion_window = values["completion-window"];
     if (values["callback-url"]) body.callback_url = values["callback-url"];
-    body.requests = requests;
+    if (values.input) body.input = { uri: values.input };
+    else body.requests = requests;
     const data = await api("POST", "/batches", { auth: authFromValues(values), body });
     printBatch(data);
-    info(`Submitted ${requests.length} request(s). Next: openrouter batches wait ${data.id}`);
+    const what = requests ? `${requests.length} request(s)` : values.input;
+    info(`Submitted ${what}. Next: openrouter batches wait ${data.id}`);
     return 0;
   }
 
@@ -352,6 +361,12 @@ export async function batchesCommand(argv) {
       if (err instanceof APIError && err.status === 403) {
         throw new APIError(
           `${err.message}\nBatch cancellation is enabled per organization; ask OpenRouter to turn it on.`,
+          err,
+        );
+      }
+      if (err instanceof APIError && err.status === 404) {
+        throw new APIError(
+          `${err.message}\nEither the batch id is wrong (check: openrouter batches get ${id}) or the route is gone: OpenRouter dropped POST /batches/{id}/cancel from its API in Nov 2026. Let the batch finish, then: openrouter batches delete ${id}`,
           err,
         );
       }
