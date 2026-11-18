@@ -11,6 +11,29 @@ import { c, isJsonMode, outln, pricePerMillion, printResult, table } from "../ou
 const ENDPOINT_SORT_FIELDS = ["throughput", "latency", "prompt", "completion", "uptime", "context"];
 const MODEL_SORT_FIELDS = ["id", "name", "context", "prompt", "completion"];
 
+// Artificial Analysis index filters: --min-<name>-index / --max-<name>-index (0-100).
+const AA_INDEXES = [
+  "intelligence",
+  "coding",
+  "agentic",
+  "cyber",
+  "decision",
+  "economics",
+  "engineering",
+  "finance-and-accounting",
+  "healthcare-and-medical",
+  "legal",
+  "multilingual",
+  "openness",
+  "strategy-and-ops",
+];
+const INDEX_FLAGS = AA_INDEXES.flatMap((name) =>
+  ["min", "max"].map((bound) => [
+    `${bound}-${name}-index`,
+    `${bound}_${name.replaceAll("-", "_")}_index`,
+  ]),
+);
+
 const PRICE_COLUMN = {
   label: "in/out $/M",
   value: (x) => {
@@ -50,6 +73,14 @@ Options for list:
   --providers <csv>          Hosting provider names
   --distillable <true|false> Filter by distillation capability
   --zdr                      Only models with ZDR endpoints
+  --min-<name>-index <n>     Artificial Analysis index score bounds (0-100;
+  --max-<name>-index <n>     unscored models are excluded). <name>:
+                             intelligence|coding|agentic|cyber|decision|
+                             economics|engineering|finance-and-accounting|
+                             healthcare-and-medical|legal|multilingual|
+                             openness|strategy-and-ops
+  --min-tool-success-rate <n>, --max-tool-success-rate <n>
+  --min-age-days <n>, --max-age-days <n>
   --endpoints <csv>          Only models served on every listed API path, e.g.
                              /api/v1/messages or /api/alpha/extractions
                              (without --output-modalities: every modality)
@@ -81,12 +112,7 @@ function listQuery(values) {
     ["max-output-price", "max_output_price"],
     ["min-age-days", "min_age_days"],
     ["max-age-days", "max_age_days"],
-    ["min-intelligence-index", "min_intelligence_index"],
-    ["max-intelligence-index", "max_intelligence_index"],
-    ["min-coding-index", "min_coding_index"],
-    ["max-coding-index", "max_coding_index"],
-    ["min-agentic-index", "min_agentic_index"],
-    ["max-agentic-index", "max_agentic_index"],
+    ...INDEX_FLAGS,
     ["min-tool-success-rate", "min_tool_success_rate"],
     ["max-tool-success-rate", "max_tool_success_rate"],
   ];
@@ -124,12 +150,7 @@ const LIST_OPTIONS = {
   endpoints: { type: "string" },
   "min-age-days": { type: "string" },
   "max-age-days": { type: "string" },
-  "min-intelligence-index": { type: "string" },
-  "max-intelligence-index": { type: "string" },
-  "min-coding-index": { type: "string" },
-  "max-coding-index": { type: "string" },
-  "min-agentic-index": { type: "string" },
-  "max-agentic-index": { type: "string" },
+  ...Object.fromEntries(INDEX_FLAGS.map(([flag]) => [flag, { type: "string" }])),
   "min-tool-success-rate": { type: "string" },
   "max-tool-success-rate": { type: "string" },
 };

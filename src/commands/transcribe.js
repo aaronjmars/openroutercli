@@ -24,6 +24,8 @@ Options:
                          some providers only)
       --language <code>  ISO-639-1 language hint (e.g. en)
       --temperature <n>
+      --prompt <text>    Context to guide transcription (providers with
+                         contextual prompting; beats provider prompt options)
       --format <fmt>     response_format: json | verbose_json (default: json;
                          verbose_json when --diarize or --timestamps is set)
       --timestamps <l>   word,segment (timestamp_granularities, verbose_json only)
@@ -83,6 +85,7 @@ export async function transcribeCommand(argv) {
     url: { type: "string" },
     language: { type: "string" },
     temperature: { type: "string" },
+    prompt: { type: "string" },
     format: { type: "string" },
     timestamps: { type: "string", multiple: true },
     diarize: { type: "boolean" },
@@ -123,6 +126,7 @@ export async function transcribeCommand(argv) {
   if (values.language) form.append("language", values.language);
   if (values.temperature !== undefined && values.temperature !== "")
     form.append("temperature", String(numberOption(values.temperature, "--temperature")));
+  if (values.prompt !== undefined) form.append("prompt", values.prompt);
   if (format) form.append("response_format", format);
   for (const t of timestamps) form.append("timestamp_granularities[]", t);
   if (values.diarize) form.append("diarize", "true");
