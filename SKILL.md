@@ -220,6 +220,7 @@ openrouter speech "Hi" -m <cloning-model> --ref ./sample.wav --ref-text "words i
 openrouter transcribe ./clip.wav -m openai/gpt-4o-transcribe        # alias: stt
 openrouter transcribe --url https://example.com/call.mp3 -m elevenlabs/scribe-v2 --diarize
 openrouter transcribe ./talk.mp3 -m elevenlabs/scribe-v2 --keyterms OpenRouter,BYOK --timestamps word
+openrouter transcribe ./standup.m4a -m openai/gpt-4o-transcribe --prompt "Team standup about BYOK routing"
 
 # Image generation (writes image-0.png, ...): tier or exact size, reference images
 openrouter image "a red bike on a beach" -m google/gemini-2.5-flash-image -o bike.png
@@ -242,6 +243,8 @@ openrouter video create "keep going" -m <video-model> --extend <jobId>
 openrouter models                                       # all (~430)
 openrouter models --filter sonnet --sort prompt         # local sort, cheapest first
 openrouter models --order intelligence-high-to-low      # server-side ranking
+openrouter models --min-cyber-index 50 --max-price 2    # Artificial Analysis index bounds (0-100):
+                                                        # intelligence, coding, agentic, cyber, decision, legal, ...
 openrouter models --free                                # only :free models
 openrouter models --input-modalities image              # image-INPUT (vision) models
 openrouter models --output-modalities image             # image-OUTPUT models
