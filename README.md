@@ -77,7 +77,7 @@ and run `openrouter login --management`.
 | **Interactive REPL** | `openrouter chat -i` - slash commands `/model <id>`, `/reset`, `/exit`. History preserved per session. |
 | **Multi-format inference** | `chat` (OpenAI), `messages` (Anthropic), `responses` (OpenAI Responses) - same auth, same flags, same JSON contract. |
 | **Batches** | `batches {create,list,get,wait,results,cancel,delete}` - send a JSONL file of chat / responses / messages / embeddings requests as one async job at about half price. |
-| **Embeddings + rerank + speech + video** | `embed` (text or images), `rerank`, `speech` (tone instructions, multi-speaker turns, voice references), `transcribe` (URL input, speaker labels, key terms, context prompt, word timestamps), `video {create,wait,download}` (resolution, first/last frame, references, audio, extend) - async video jobs poll-until-done with `video wait <jobId>`. |
+| **Embeddings + rerank + speech + video** | `embed` (text or images), `rerank`, `speech` (tone instructions, multi-speaker turns, voice references; `speech models` lists TTS models with their voices), `transcribe` (URL input, speaker labels, key terms, context prompt, word timestamps), `video {create,wait,download}` (resolution, first/last frame, references, audio, extend) - async video jobs poll-until-done with `video wait <jobId>`, which shows the job's stage and percent done. |
 | **Model discovery with detail** | `models list` (filter, sort by price/context, `--endpoints` by API path served, `--min-<name>-index`/`--max-<name>-index` Artificial Analysis score bounds), `models show <id>` (full pricing breakdown - prompt, completion, cache r/w, reasoning, image, web search), `models endpoints <id> --sort throughput\|latency\|prompt\|completion\|uptime --best` for choosing the right provider variant. |
 | **Benchmarks + rankings** | `benchmarks`, `classifications`, and `datasets {apps,daily,session-cost}` expose OpenRouter's current public benchmark and usage datasets. |
 | **Management analytics** | `analytics meta` discovers fields; `analytics query` runs metrics/dimensions/time-range queries with a management key. |
@@ -209,7 +209,7 @@ Endpoint coverage map:
 | `POST /responses` | `openrouter responses` |
 | `POST /embeddings` / `GET /embeddings/models` | `openrouter embed [models]` |
 | `POST /rerank` | `openrouter rerank` |
-| `POST /audio/speech` | `openrouter speech`, `openrouter tts` |
+| `POST /audio/speech`, `GET /audio/speech/models[/{author}/{slug}]` | `openrouter speech`, `openrouter tts`, `openrouter speech models [author/slug]` |
 | `POST /videos`, `GET /videos/{id}`, `GET /videos/{id}/content`, `GET /videos/models` | `openrouter video {create,get,wait,download,models}` |
 | `GET /generation`, `GET /generation/content`, `POST /generation/feedback` | `openrouter generation [--content]`, `openrouter generation feedback` |
 | `GET/POST/DELETE /batches[/{id}]`, `POST /batches/{id}/cancel` | `openrouter batches {list,create,get,wait,results,cancel,delete}` |

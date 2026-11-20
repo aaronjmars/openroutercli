@@ -224,6 +224,7 @@ openrouter transcribe ./standup.m4a -m openai/gpt-4o-transcribe --prompt "Team s
 
 # Image generation (writes image-0.png, ...): tier or exact size, reference images
 openrouter image "a red bike on a beach" -m google/gemini-2.5-flash-image -o bike.png
+openrouter image "a red bike" -m google/gemini-2.5-flash-image --response-format url   # signed hosted URL (24h) instead of a file
 openrouter image "same bike, at night" -m google/gemini-2.5-flash-image --image ./bike.png --resolution 2K
 # Animated GIF (2-64 frames, 20-2000 ms each) and a markup overlay guiding an edit (openai/gpt-image-2.6-*)
 openrouter image "a spinning coin" -m openai/gpt-image-2.6-flare --format gif --frames 8 --frame-ms 100 -o coin.gif
@@ -263,7 +264,7 @@ openrouter models parameters openai/gpt-4o --provider openai
 openrouter models endpoints anthropic/claude-sonnet-4.5 --sort throughput --best
 openrouter models endpoints openai/gpt-4o-mini --sort latency
 openrouter models endpoints openai/gpt-4o-mini --sort prompt
-openrouter benchmarks --task-type coding --max-results 20
+openrouter benchmarks --task-type coding --max-results 20   # also cyber, legal, finance-and-accounting, multilingual, decision ...
 openrouter classifications --window 7d
 openrouter datasets daily --period week --category programming
 openrouter analytics meta
@@ -279,6 +280,8 @@ openrouter containers list <container-id>
 openrouter providers                                    # all providers
 openrouter embed models                                 # embedding models
 openrouter image models                                 # image gen models
+openrouter speech models                                # TTS models (voice count, formats, providers)
+openrouter speech models speechify/simba-3.5            # one TTS model: voices, formats, providers
 openrouter video models                                 # video gen models
 openrouter zdr                                          # ZDR-eligible endpoints
 openrouter tools list                                   # server tools catalog (openrouter:*)
@@ -473,9 +476,8 @@ openrouter --json keys get <hash> | jq '.data | {usage, usage_daily, limit_remai
 - **Activity is daily-aggregated and only covers completed UTC days.** A
   query for today returns `400 Date must be within the last 30 (completed)
   UTC days`.
-- **Speech (`/audio/speech`) currently has limited model availability** on
-  OpenRouter. The CLI sends valid requests; the API may return `Model X
-  does not exist` for many model ids.
+- **Speech (`/audio/speech`) only takes the TTS model ids** that
+  `openrouter speech models` lists; any other id returns `Model X does not exist`.
 - **`auth-code` requires a Clerk session JWT** despite the OpenAPI spec
   suggesting any management key works. Treat that subcommand as best-effort
   until OpenRouter aligns server behavior with the spec.

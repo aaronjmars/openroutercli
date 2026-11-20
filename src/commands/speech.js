@@ -10,11 +10,15 @@ import {
 } from "../args.js";
 import { api } from "../api.js";
 import { mediaKind, mediaUrl } from "../media.js";
-import { info, writeBinaryOutput } from "../output.js";
+import { c, info, outln, printResult, table, writeBinaryOutput } from "../output.js";
 
 const HELP = `Usage: openrouter speech [text...] [options]
+       openrouter speech models [<author>/<slug>]
 
 Generate speech audio from text. Reads text from arguments or stdin.
+\`speech models\` lists text-to-speech models (no key needed); with a model id
+it shows that model's voices, formats and providers. To speak text that starts
+with the word "models", pipe it on stdin.
 
 Options:
   -m, --model <id>     TTS model id (required)
@@ -51,7 +55,71 @@ async function referenceParts(refs, texts) {
   return parts;
 }
 
+function speechParams(m) {
+  const out = (m.output_modalities || []).find((o) => o.type === "speech") || {};
+  return out.supported_parameters || {};
+}
+
+function enumValues(p) {
+  return p && Array.isArray(p.values) ? p.values : [];
+}
+
+async function speechModels(argv) {
+  const { values, positionals } = parseArgs(argv, {});
+  if (values.help) {
+    process.stdout.write(HELP);
+    return 0;
+  }
+  const auth = authFromValues(values);
+  if (!positionals[0]) {
+    const data = await api("GET", "/audio/speech/models", { auth, requireAuth: false });
+    printResult(data, () => {
+      table(data.data || [], [
+        { label: "id", value: (m) => m.id },
+        { label: "voices", value: (m) => enumValues(speechParams(m).voice).length || "" },
+        { label: "formats", value: (m) => enumValues(speechParams(m).response_format).join(",") },
+        { label: "providers", value: (m) => (m.endpoints || []).length },
+        { label: "name", value: (m) => m.name || "" },
+      ]);
+    });
+    return 0;
+  }
+  const target = positionals[0];
+  const slash = target.indexOf("/");
+  if (slash === -1) throw new Error("Expected <author>/<slug>");
+  const author = encodeURIComponent(target.slice(0, slash));
+  const slug = encodeURIComponent(target.slice(slash + 1));
+  const data = await api("GET", `/audio/speech/models/${author}/${slug}`, {
+    auth,
+    requireAuth: false,
+  });
+  printResult(data, () => {
+    const m = data.data || data;
+    const params = speechParams(m);
+    outln(`${c.bold("id:")} ${m.id}`);
+    if (m.name) outln(`${c.bold("name:")} ${m.name}`);
+    if (m.description) outln(`${c.bold("description:")} ${m.description}`);
+    for (const [name, p] of Object.entries(params)) {
+      const vals = enumValues(p);
+      let shown = p.type || "supported";
+      if (vals.length) shown = vals.join(", ");
+      else if (p.type === "range" && p.min != null && p.max != null) shown = `${p.min} to ${p.max}`;
+      outln(`${c.bold(`${name}:`)} ${shown}`);
+    }
+    const eps = m.endpoints || [];
+    if (eps.length) {
+      outln(c.bold("providers:"));
+      table(eps, [
+        { label: "provider", value: (e) => e.provider_name || "" },
+        { label: "slug", value: (e) => e.provider_slug || "" },
+      ]);
+    }
+  });
+  return 0;
+}
+
 export async function speechCommand(argv) {
+  if (argv[0] === "models") return speechModels(argv.slice(1));
   const { values, positionals } = parseArgs(argv, {
     model: { type: "string", short: "m" },
     voice: { type: "string" },

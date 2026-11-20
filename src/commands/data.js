@@ -32,7 +32,9 @@ Arena, OpenRouter evaluations, and search benchmarks.
 
 Options:
   --source <name>             artificial-analysis | design-arena
-  --task-type <type>          coding | intelligence | agentic | search
+  --task-type <type>          intelligence | coding | agentic | search | cyber | decision |
+                              economics | engineering | finance-and-accounting | legal |
+                              healthcare-and-medical | multilingual | strategy-and-ops
   --benchmark-type <type>     Exact OpenRouter benchmark (e.g. search_widesearch)
   --include-run-config        Include published search benchmark run config
   --search-engine <name>      Filter search benchmarks by engine

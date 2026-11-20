@@ -10,6 +10,7 @@ import {
 import { api } from "../api.js";
 import { mediaUrl } from "../media.js";
 import {
+  info,
   isJsonMode,
   outln,
   pricePerMillion,
@@ -46,6 +47,8 @@ create options:
                          the first --image, guiding where an edit applies
       --compression <n>  0-100, webp/jpeg only
       --background <b>   auto | transparent | opaque
+      --response-format <f> b64_json (default, saved to files) | url (signed
+                         OpenRouter-hosted URL, valid up to 24h, printed)
       --seed <n>
       --provider <json|@file>
       --extra <json|@file> Extra fields merged into the body (last)
@@ -130,6 +133,7 @@ export async function imageCommand(argv) {
     markup: { type: "string" },
     compression: { type: "string" },
     background: { type: "string" },
+    "response-format": { type: "string" },
     seed: { type: "string" },
     provider: { type: "string" },
     extra: { type: "string" },
@@ -163,6 +167,12 @@ export async function imageCommand(argv) {
   if (values.compression)
     body.output_compression = numberOption(values.compression, "--compression");
   if (values.background) body.background = values.background;
+  if (values["response-format"]) {
+    if (!["b64_json", "url"].includes(values["response-format"])) {
+      throw new Error("--response-format must be b64_json or url");
+    }
+    body.response_format = values["response-format"];
+  }
   if (values.seed) body.seed = numberOption(values.seed, "--seed");
   if (values.provider) body.provider = await loadJson(values.provider, "--provider");
   await applyRequestFields(body, values);
@@ -189,6 +199,11 @@ export async function imageCommand(argv) {
     } else if (img.url) {
       outln(img.url);
     }
+  }
+  if (data.expires_at != null && images.some((img) => !img.b64_json && img.url)) {
+    const when = new Date(Number(data.expires_at) * 1000);
+    const shown = Number.isNaN(when.getTime()) ? data.expires_at : when.toISOString();
+    info(`urls expire: ${shown}`);
   }
   return 0;
 }
