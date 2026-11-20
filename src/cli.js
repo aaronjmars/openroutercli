@@ -107,7 +107,7 @@ Inference:
   responses [prompt...]  OpenAI-compatible /responses endpoint
   embed [text...]        Embeddings
   rerank --query --doc   Reranking
-  speech [text...]       Text to speech (audio out)
+  speech [text...]       Text to speech (audio out); "speech models" lists TTS models
   transcribe <file>      Speech to text (audio in). Alias: stt
   video <sub>            Video generation jobs (create / get / wait / download / models)
   image <sub>            Image generation (create / models / endpoints). Alias: images

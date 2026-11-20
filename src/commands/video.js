@@ -66,7 +66,10 @@ function printJob(data) {
   const job = data.data && data.data.status ? data.data : data;
   printResult(data, () => {
     outln(`${c.bold("job:")} ${job.id}`);
-    outln(`${c.bold("status:")} ${job.status}`);
+    outln(
+      `${c.bold("status:")} ${job.status}${job.status_detail ? ` (${job.status_detail})` : ""}`,
+    );
+    if (job.progress != null) outln(`${c.bold("progress:")} ${job.progress}%`);
     if (job.generation_id) outln(`${c.bold("generation:")} ${job.generation_id}`);
     if (job.expires_at != null) {
       const when = new Date(Number(job.expires_at) * 1000);
@@ -199,8 +202,11 @@ export async function videoCommand(argv) {
       const data = await api("GET", `/videos/${encodeURIComponent(positionals[0])}`, {
         auth: authFromValues(values),
       });
-      const status = data.status || (data.data && data.data.status);
-      info(`status: ${status}`);
+      const job = data.data && data.data.status ? data.data : data;
+      const status = job.status;
+      const detail = job.status_detail ? ` (${job.status_detail})` : "";
+      const pct = job.progress != null ? ` ${job.progress}%` : "";
+      info(`status: ${status}${detail}${pct}`);
       if (TERMINAL_STATUSES.includes(status)) {
         printJob(data);
         return FAILED_STATUSES.includes(status) ? 4 : 0;
