@@ -244,6 +244,9 @@ openrouter video create "keep going" -m <video-model> --extend <jobId>
 openrouter models                                       # all (~430)
 openrouter models --filter sonnet --sort prompt         # local sort, cheapest first
 openrouter models --order intelligence-high-to-low      # server-side ranking
+openrouter models --sort latency --max-latency 300      # live p50 latency/throughput columns
+openrouter models --sort throughput --min-throughput 200
+openrouter models --order newest                        # newest first, adds a created column
 openrouter models --min-cyber-index 50 --max-price 2    # Artificial Analysis index bounds (0-100):
                                                         # intelligence, coding, agentic, cyber, decision, legal, ...
 openrouter models --free                                # only :free models
