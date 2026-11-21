@@ -49,7 +49,7 @@ npx -p @aaronjmars/openroutercli openrouter --help
 git clone https://github.com/aaronjmars/openroutercli && cd openroutercli && npm link
 ```
 
-Requires Node.js 20+. Once installed, two binaries are available: `openrouter`
+Requires Node.js 22+. Once installed, two binaries are available: `openrouter`
 and the shorter alias `or`.
 
 ## Authenticate

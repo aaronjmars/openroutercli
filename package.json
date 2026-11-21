@@ -8,7 +8,7 @@
     "or": "bin/openrouter.js"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "files": [
     "bin",
