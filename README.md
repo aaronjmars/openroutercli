@@ -34,7 +34,7 @@
 
 The recommended path: **install with npm + `openrouter login`.** First request in under 60 seconds.
 
-**Prereqs** - Node.js 20+ and an [OpenRouter account](https://openrouter.ai/).
+**Prereqs** - Node.js 22+ and an [OpenRouter account](https://openrouter.ai/).
 
 Install:
 
@@ -88,7 +88,7 @@ and run `openrouter login --management`.
 | **Account + governance** | `keys`, `guardrails` (allow/deny lists, USD limits, ZDR, data regions, content filters, typed budget / model-availability / moderation policies), `workspaces` (defaults, members, budgets, disabled tools), `observability` destinations (Langfuse, Datadog, ...), `org members` / `org settings`, `auth-code` to mint claim links. All require a management key. |
 | **Raw escape hatch** | `openrouter request <METHOD> <path> --body @file.json --query k=v --header k:v` - talk to any current or future endpoint without waiting for a CLI release. |
 | **Agent-friendly errors** | Stable exit codes (1 usage, 2 API, 3 no key, 4 job failed). API error messages surfaced verbatim. `OPENROUTER_DEBUG=1` for stack traces. |
-| **Zero npm dependencies** | Pure Node 20+ - built-in `fetch`, `parseArgs`, `crypto`. Cold install in seconds. Easy to audit. |
+| **Zero npm dependencies** | Pure Node 22+ - built-in `fetch`, `parseArgs`, `crypto`. Cold install in seconds. Easy to audit. |
 
 Each command supports `openrouter <command> --help` for full per-command flags.
 
