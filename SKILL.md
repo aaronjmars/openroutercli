@@ -49,7 +49,7 @@ npx -p @aaronjmars/openroutercli openrouter --help
 git clone https://github.com/aaronjmars/openroutercli && cd openroutercli && npm link
 ```
 
-Requires Node.js 20+. Once installed, two binaries are available: `openrouter`
+Requires Node.js 22+. Once installed, two binaries are available: `openrouter`
 and the shorter alias `or`.
 
 ## Authenticate
@@ -215,6 +215,7 @@ openrouter speech "Hello there" -m elevenlabs/eleven-v4 --voice <voice> -o out.m
 openrouter speech "Welcome back" -m openai/gpt-4o-mini-tts --voice alloy --instructions "warm, slow"
 openrouter speech -m google/gemini-2.5-flash-preview-tts --turns @dialogue.json   # [{text, voice}]
 openrouter speech "Hi" -m <cloning-model> --ref ./sample.wav --ref-text "words in the sample"
+openrouter speech "Hello" -m elevenlabs/eleven-v4 --voice <voice> --delivery url --json   # signed download url, valid up to 24h
 
 # Speech to text: file or URL, speaker labels, key terms, word timestamps
 openrouter transcribe ./clip.wav -m openai/gpt-4o-transcribe        # alias: stt
@@ -338,6 +339,7 @@ openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --includ
 openrouter guardrails update <id> --regions europe --builtin-filters email:redact,secrets:block --no-paid-training
 openrouter guardrails update <id> --allow-safety-retention-google --no-allow-safety-retention-other
 openrouter guardrails update <id> --harness-models      # codex/claude harnesses only see their vendor's models
+openrouter guardrails update <id> --no-allow-provisional-providers   # exclude unreviewed (provisional) providers
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call
 openrouter guardrails assignments --members --workspace <uuid>   # org keys list every workspace otherwise
 
@@ -383,6 +385,7 @@ openrouter byok list
 openrouter byok create --provider anthropic --api-key sk-ant-... --name "my anthropic" --fallback
 openrouter byok update <id> --allowed-models "anthropic/claude-sonnet-4.5" --disabled
 openrouter byok update <id> --region europe --zdr true --byok-only
+openrouter byok update <id> --exclusive --allowed-models "anthropic/claude-sonnet-4.5"   # only this key serves those models
 openrouter byok get <id>
 openrouter byok delete <id>
 ```
