@@ -9,7 +9,19 @@ import { api, APIError } from "../api.js";
 import { c, isJsonMode, outln, pricePerMillion, printResult, table } from "../output.js";
 
 const ENDPOINT_SORT_FIELDS = ["throughput", "latency", "prompt", "completion", "uptime", "context"];
-const MODEL_SORT_FIELDS = ["id", "name", "context", "prompt", "completion"];
+const MODEL_SORT_FIELDS = [
+  "id",
+  "name",
+  "context",
+  "prompt",
+  "completion",
+  "latency",
+  "throughput",
+];
+
+// Live p50 latency/throughput per model. The public /models payload carries no
+// timings; the rankings page reads this undocumented, keyless feed instead.
+const PERFORMANCE_PATH = "/api/frontend/v1/rankings/performance";
 
 // Artificial Analysis index filters: --min-<name>-index / --max-<name>-index (0-100).
 const AA_INDEXES = [
@@ -41,6 +53,104 @@ const PRICE_COLUMN = {
     return `${pricePerMillion(p.prompt)}/${pricePerMillion(p.completion)}`;
   },
 };
+
+// Rankings slugs carry a date stamp ("author/slug-20261118"); catalog ids do
+// not ("author/slug"), so matching needs the stamp stripped.
+export function baseModelId(id = "") {
+  return id.replace(/-\d{8}$/, "");
+}
+
+// fetchPerformance reads the keyless rankings feed and returns slug -> p50
+// stats. Callers decide when to pay for the extra request.
+export async function fetchPerformance(auth) {
+  const baseUrl = auth?.baseUrl || "https://openrouter.ai/api/v1";
+  const url = new URL(PERFORMANCE_PATH, baseUrl).toString();
+  const data = await api("GET", url, { auth, requireAuth: false });
+  const byId = new Map();
+  for (const row of data?.data || []) {
+    const stats = { p50_latency: row.p50_latency, p50_throughput: row.p50_throughput };
+    for (const key of [row.slug, row.id, baseModelId(row.slug || "")]) {
+      if (key) byId.set(key, stats);
+    }
+  }
+  return byId;
+}
+
+export function attachPerformance(rows, byId) {
+  return rows.map((m) => {
+    const stats =
+      byId.get(m.id) ||
+      byId.get(baseModelId(m.id)) ||
+      byId.get(baseModelId(m.canonical_slug || ""));
+    return stats ? { ...m, performance: stats } : m;
+  });
+}
+
+// Threshold filters drop unmeasured rows: "faster than 300 ms" cannot be
+// satisfied by a model we never timed.
+export function filterByPerformance(rows, values) {
+  const maxLatency = values["max-latency"] == null ? null : Number(values["max-latency"]);
+  const minThroughput = values["min-throughput"] == null ? null : Number(values["min-throughput"]);
+  return rows.filter((m) => {
+    const perf = m.performance;
+    if (maxLatency !== null && !(Number.isFinite(maxLatency) && perf?.p50_latency <= maxLatency)) {
+      return false;
+    }
+    if (
+      minThroughput !== null &&
+      !(Number.isFinite(minThroughput) && perf?.p50_throughput >= minThroughput)
+    ) {
+      return false;
+    }
+    return true;
+  });
+}
+
+// sortModelRows orders rows locally. Latency/throughput read the merged
+// `performance` field; unmeasured rows score to the end instead of posing as
+// fast.
+export function sortModelRows(rows, key) {
+  if (!MODEL_SORT_FIELDS.includes(key)) {
+    throw new Error(`Unknown --sort field "${key}". Expected: ${MODEL_SORT_FIELDS.join(" | ")}`);
+  }
+  // Unparseable or missing values must score to a definite extreme, or the
+  // comparator reports them equal to everything and the sort is a no-op.
+  const num = (x) => {
+    if (x == null || x === "") return null;
+    const n = Number(x);
+    return Number.isFinite(n) ? n : null;
+  };
+  const asc = (x) => num(x) ?? Infinity;
+  const desc = (x) => {
+    const n = num(x);
+    return n === null ? Infinity : -n;
+  };
+  const get = (m) => {
+    switch (key) {
+      case "id":
+        return m.id || "";
+      case "name":
+        return m.name || "";
+      case "context":
+        return desc(m.context_length);
+      case "prompt":
+        return asc(m.pricing?.prompt);
+      case "completion":
+        return asc(m.pricing?.completion);
+      case "latency":
+        return asc(m.performance?.p50_latency);
+      case "throughput":
+        return desc(m.performance?.p50_throughput);
+    }
+  };
+  return [...rows].sort((a, b) => {
+    const va = get(a),
+      vb = get(b);
+    if (va < vb) return -1;
+    if (va > vb) return 1;
+    return 0;
+  });
+}
 
 const HELP = `Usage: openrouter models [subcommand] [options]
 
@@ -92,7 +202,9 @@ Options for list:
                              coding-high-to-low|agentic-high-to-low
   --filter <substr>          Local substring filter on id/name
   --free                     Only :free models
-  --sort <field>             Local sort: id|name|context|prompt|completion
+  --sort <field>             Local sort: id|name|context|prompt|completion|latency|throughput
+  --max-latency <ms>         Drop models slower than N ms p50 (one extra keyless rankings call)
+  --min-throughput <tok/s>   Drop models below N tokens/s p50 (one extra keyless rankings call)
 `;
 
 // Server-side filters shared by `list` and `user`.
@@ -141,6 +253,8 @@ const LIST_OPTIONS = {
   "max-price": { type: "string" },
   "min-output-price": { type: "string" },
   "max-output-price": { type: "string" },
+  "max-latency": { type: "string" },
+  "min-throughput": { type: "string" },
   arch: { type: "string" },
   "model-authors": { type: "string" },
   providers: { type: "string" },
@@ -155,19 +269,40 @@ const LIST_OPTIONS = {
   "max-tool-success-rate": { type: "string" },
 };
 
-function listFormatter(data) {
+function listFormatter(data, opts = {}) {
   const rows = data.data || [];
-  table(rows.slice(0, 200), [
+  const columns = [
     { label: "id", value: (m) => m.id },
     {
       label: "context",
       value: (m) => (m.context_length || "").toLocaleString?.() ?? m.context_length,
     },
     PRICE_COLUMN,
-    { label: "name", value: (m) => m.name || "" },
-  ]);
+  ];
+  if (opts.showPerformance) {
+    columns.push(
+      { label: "lat p50", value: (m) => fmtP50(m.performance?.p50_latency, "ms") },
+      { label: "tput p50", value: (m) => fmtP50(m.performance?.p50_throughput, "t/s") },
+    );
+  }
+  if (opts.showCreated) {
+    columns.push({ label: "created", value: (m) => fmtCreated(m.created) });
+  }
+  columns.push({ label: "name", value: (m) => m.name || "" });
+  table(rows.slice(0, 200), columns);
   if (rows.length > 200)
     outln(c.dim(`... ${rows.length - 200} more (use --json for the full list)`));
+}
+
+function fmtP50(x, unit) {
+  const n = Number(x);
+  if (x == null || !Number.isFinite(n) || n <= 0) return "-";
+  return `${Math.round(n)}${unit}`;
+}
+
+function fmtCreated(created) {
+  if (!created) return "-";
+  return new Date(created * 1000).toISOString().slice(0, 10);
 }
 
 function fmtPerMillion(x) {
@@ -589,49 +724,29 @@ export async function modelsCommand(argv) {
   }
   if (values.free) rows = rows.filter((m) => (m.id || "").endsWith(":free"));
 
-  if (values.sort) {
-    const key = values.sort;
-    if (!MODEL_SORT_FIELDS.includes(key)) {
-      throw new Error(`Unknown --sort field "${key}". Expected: ${MODEL_SORT_FIELDS.join(" | ")}`);
-    }
-    // Unparseable or missing values must score to a definite extreme, or the
-    // comparator reports them equal to everything and the sort is a no-op.
-    const num = (x) => {
-      if (x == null || x === "") return null;
-      const n = Number(x);
-      return Number.isFinite(n) ? n : null;
-    };
-    const asc = (x) => num(x) ?? Infinity;
-    const desc = (x) => {
-      const n = num(x);
-      return n === null ? Infinity : -n;
-    };
-    const get = (m) => {
-      switch (key) {
-        case "id":
-          return m.id || "";
-        case "name":
-          return m.name || "";
-        case "context":
-          return desc(m.context_length);
-        case "prompt":
-          return asc(m.pricing?.prompt);
-        case "completion":
-          return asc(m.pricing?.completion);
-      }
-    };
-    rows = [...rows].sort((a, b) => {
-      const va = get(a),
-        vb = get(b);
-      if (va < vb) return -1;
-      if (va > vb) return 1;
-      return 0;
-    });
+  const wantsPerformance =
+    values.sort === "latency" ||
+    values.sort === "throughput" ||
+    values["max-latency"] != null ||
+    values["min-throughput"] != null ||
+    values.order === "latency-low-to-high" ||
+    values.order === "throughput-high-to-low";
+  if (wantsPerformance) {
+    const auth = authFromValues(values);
+    rows = attachPerformance(rows, await fetchPerformance(auth));
+    rows = filterByPerformance(rows, values);
   }
+
+  if (values.sort) rows = sortModelRows(rows, values.sort);
 
   const filtered = { ...data, data: rows };
   if (values.filter || values.free) filtered.total_count = rows.length;
-  printResult(filtered, () => listFormatter(filtered));
+  printResult(filtered, () =>
+    listFormatter(filtered, {
+      showPerformance: wantsPerformance,
+      showCreated: values.order === "newest",
+    }),
+  );
   return 0;
 }
 
