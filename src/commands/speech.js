@@ -33,6 +33,10 @@ Options:
       --format <fmt>   mp3 | pcm (default: mp3, or pcm for HeyGen Voice and
                        Gemini TTS, which only return pcm; pcm is raw 16-bit audio)
       --speed <n>      Speech speed (e.g. 1.0)
+      --delivery <d>   stream (default, audio bytes) | url (store the audio and print
+                       JSON with a signed download url, expires_at, media_type; the
+                       url is a bearer link valid up to 24h). Falls back to bytes
+                       under zero data retention.
   -o, --out <file>     Output audio file (default: out.mp3 / out.pcm, or stdout if -)
       --provider <json|@file>  Routing and provider options, e.g.
                        '{"zdr":true,"options":{"elevenlabs":{"stability":0.5}}}'
@@ -129,6 +133,7 @@ export async function speechCommand(argv) {
     "ref-text": { type: "string", multiple: true },
     format: { type: "string" },
     speed: { type: "string" },
+    delivery: { type: "string" },
     out: { type: "string", short: "o" },
     provider: { type: "string" },
     extra: { type: "string" },
@@ -169,15 +174,27 @@ export async function speechCommand(argv) {
     body.input_references = await referenceParts(values.ref, values["ref-text"] || []);
   }
   if (values.speed) body.speed = numberOption(values.speed, "--speed");
+  if (values.delivery) {
+    if (!["stream", "url"].includes(values.delivery)) {
+      throw new Error("--delivery must be stream or url");
+    }
+    body.output_delivery = values.delivery;
+  }
   if (values.provider) body.provider = await loadJson(values.provider, "--provider");
   await applyRequestFields(body, values);
   if (values.extra) Object.assign(body, await loadJson(values.extra, "--extra"));
 
-  const bytes = await api("POST", "/audio/speech", {
+  const res = await api("POST", "/audio/speech", {
     auth: authFromValues(values),
     body,
-    binary: true,
+    raw: true,
   });
+  // output_delivery=url answers JSON; stream (and the ZDR fallback) answers audio bytes.
+  if ((res.headers.get("content-type") || "").includes("application/json")) {
+    printResult(await res.json());
+    return 0;
+  }
+  const bytes = new Uint8Array(await res.arrayBuffer());
 
   const outFormat = body.response_format;
   const out = values.out || `out.${outFormat}`;
