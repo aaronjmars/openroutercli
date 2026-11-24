@@ -32,6 +32,8 @@ create / update options:
   --required / --no-required     Drop shared endpoints for this key's models
   --byok-only / --no-byok-only   Drop shared endpoints for every model on this
                                  provider, even after your keys fail
+  --exclusive / --no-exclusive   Serve this key's models only from exclusive keys
+                                 (404 if none can; not with --fallback)
   --region <r>           Declared data region: global | europe | us | none
   --zdr <v>              Declared zero data retention: true | false | none
 `;
@@ -52,6 +54,8 @@ const WRITE_OPTIONS = {
   "no-required": { type: "boolean" },
   "byok-only": { type: "boolean" },
   "no-byok-only": { type: "boolean" },
+  exclusive: { type: "boolean" },
+  "no-exclusive": { type: "boolean" },
   region: { type: "string" },
   zdr: { type: "string" },
 };
@@ -90,6 +94,7 @@ function buildBody(values) {
     ["is_fallback", "fallback", "no-fallback"],
     ["is_required", "required", "no-required"],
     ["is_byok_only", "byok-only", "no-byok-only"],
+    ["is_exclusive", "exclusive", "no-exclusive"],
   ];
   for (const [field, on, off] of pairs) {
     const v = toggle(values, on, off);
@@ -97,6 +102,9 @@ function buildBody(values) {
   }
   if (body.is_fallback && body.is_byok_only) {
     throw new Error("--fallback cannot be combined with --byok-only.");
+  }
+  if (body.is_fallback && body.is_exclusive) {
+    throw new Error("--fallback cannot be combined with --exclusive.");
   }
   if (values.region !== undefined) {
     if (values.region === "none") body.declared_region = null;

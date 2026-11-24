@@ -68,6 +68,10 @@ create / update options:
                             enforce_first_party_harness_models: when a coding
                             harness (claude_code, claude_desktop, codex) lists
                             models, show only the harness vendor's own
+  --allow-provisional-providers / --no-allow-provisional-providers
+                            Allow providers whose security practices OpenRouter has not
+                            reviewed (unset inherits the account setting; never overrides
+                            an account that excludes them)
   --include-byok / --no-include-byok   Count BYOK spend toward the budget
   --workspace <uuid>        (create only)
   --extra <json|@file>      Extra body fields, merged last (e.g. enforce_zdr_xai:false)
@@ -163,6 +167,7 @@ async function buildBody(values) {
     ["allow_safety_retention_google", "allow-safety-retention-google"],
     ["allow_safety_retention_other", "allow-safety-retention-other"],
     ["enforce_first_party_harness_models", "harness-models"],
+    ["allow_provisional_providers", "allow-provisional-providers"],
   ];
   for (const [field, flag] of toggles) {
     const v = toggle(values, flag, `no-${flag}`);
@@ -206,6 +211,8 @@ const COMMON_FIELDS = {
   "no-allow-safety-retention-other": { type: "boolean" },
   "harness-models": { type: "boolean" },
   "no-harness-models": { type: "boolean" },
+  "allow-provisional-providers": { type: "boolean" },
+  "no-allow-provisional-providers": { type: "boolean" },
   extra: { type: "string" },
 };
 
