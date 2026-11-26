@@ -169,6 +169,35 @@ function printBatch(b) {
   });
 }
 
+// GET /batches/{id}/results pages through every result row (1000 per call).
+// Returns null when the route is missing, so callers fall back to the inline
+// results on GET /batches/{id}.
+async function getResultPages(id, values) {
+  const rows = [];
+  let cursor;
+  for (;;) {
+    const query = { limit: "1000" };
+    if (cursor) query.cursor = cursor;
+    let page;
+    try {
+      page = await api("GET", `/batches/${encodeURIComponent(id)}/results`, {
+        auth: authFromValues(values),
+        query,
+      });
+    } catch (err) {
+      if (err instanceof APIError && err.status === 404 && rows.length === 0) return null;
+      if (err instanceof APIError && err.status === 410) {
+        throw new APIError(`batch expired (results retained 30 days): ${id}`, err);
+      }
+      throw err;
+    }
+    if (!page || !Array.isArray(page.data)) return rows.length ? rows : null;
+    rows.push(...page.data);
+    if (!page.has_more || !page.next_cursor) return rows;
+    cursor = page.next_cursor;
+  }
+}
+
 // 410 and 402 carry a useful meaning the generic API message hides.
 async function getBatch(id, values, signal) {
   try {
@@ -341,16 +370,17 @@ export async function batchesCommand(argv) {
     });
     if (!positionals[0]) throw new Error("id required");
     const data = await getBatch(positionals[0], values);
-    if (!Array.isArray(data.results)) {
-      if (!TERMINAL_STATUSES.includes(data.status)) {
-        throw new Error(
-          `batch is not finished (status: ${data.status}). Run: openrouter batches wait ${positionals[0]}`,
-        );
-      }
+    if (!TERMINAL_STATUSES.includes(data.status)) {
+      throw new Error(
+        `batch is not finished (status: ${data.status}). Run: openrouter batches wait ${positionals[0]}`,
+      );
+    }
+    let results = await getResultPages(positionals[0], values);
+    if (results === null) results = data.results;
+    if (!Array.isArray(results)) {
       const why = data.error && data.error.message ? `: ${data.error.message}` : "";
       throw new Error(`batch ${data.status} with no results${why}`);
     }
-    const results = data.results;
     const failed = results.filter((r) => r.error).length;
     const out = values.out;
     if (!out || out === "-") {

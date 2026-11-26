@@ -212,7 +212,7 @@ Endpoint coverage map:
 | `POST /audio/speech`, `GET /audio/speech/models[/{author}/{slug}]` | `openrouter speech`, `openrouter tts`, `openrouter speech models [author/slug]` |
 | `POST /videos`, `GET /videos/{id}`, `GET /videos/{id}/content`, `GET /videos/models` | `openrouter video {create,get,wait,download,models}` |
 | `GET /generation`, `GET /generation/content`, `POST /generation/feedback` | `openrouter generation [--content]`, `openrouter generation feedback` |
-| `GET/POST/DELETE /batches[/{id}]`, `POST /batches/{id}/cancel` | `openrouter batches {list,create,get,wait,results,cancel,delete}` |
+| `GET/POST/DELETE /batches[/{id}]`, `GET /batches/{id}/results` (paged), `POST /batches/{id}/cancel` | `openrouter batches {list,create,get,wait,results,cancel,delete}` |
 | `GET /tools`, `GET /tools/{name}` | `openrouter tools {list,get}` |
 | `POST /audio/transcriptions` | `openrouter transcribe`, `openrouter stt` |
 | `POST /images`, `GET /images/models` | `openrouter image [models]` |
