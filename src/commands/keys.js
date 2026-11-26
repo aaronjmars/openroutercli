@@ -18,6 +18,7 @@ list options:
   --include-disabled     Include disabled keys
   --include-expired      Include expired keys (hidden by default)
   --workspace <uuid>     Keys in this workspace (default: the default workspace)
+  --creator <user_id>    Only keys created by this user
 
 create options:
   --limit <usd>          Spending limit
@@ -74,12 +75,14 @@ export async function keysCommand(argv) {
       "include-disabled": { type: "boolean" },
       "include-expired": { type: "boolean" },
       workspace: { type: "string" },
+      creator: { type: "string" },
     });
     const query = {};
     if (values.offset) query.offset = values.offset;
     if (values["include-disabled"]) query.include_disabled = "true";
     if (values["include-expired"]) query.include_expired = "true";
     if (values.workspace) query.workspace_id = values.workspace;
+    if (values.creator) query.creator_user_id = values.creator;
     const data = await api("GET", "/keys", {
       auth: authFromValues(values),
       requiresManagement: true,

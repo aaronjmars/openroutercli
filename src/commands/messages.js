@@ -74,6 +74,7 @@ Options:
       --stop <text>        Stop sequence (repeatable via comma, max 4)
       --reasoning <effort> none|minimal|low|medium|high|xhigh|max
       --truncation <t>     auto | disabled
+      --context-management <json|@file>  e.g. [{"type":"compaction","compact_threshold":200000}]
       --models <csv>       Fallback models
       --provider <json|@file>  Provider routing (order, only, sort, ...;
                            options: per-provider passthrough keyed by slug)
@@ -324,6 +325,7 @@ export async function responsesCommand(argv) {
     background: { type: "boolean" },
     verbosity: { type: "string" },
     truncation: { type: "string" },
+    "context-management": { type: "string" },
     "prompt-cache-key": { type: "string" },
     "safety-identifier": { type: "string" },
     extra: { type: "string" },
@@ -354,6 +356,11 @@ export async function responsesCommand(argv) {
     if (values.stop) body.stop = values.stop.includes(",") ? values.stop.split(",") : values.stop;
     if (values.reasoning) body.reasoning = { effort: values.reasoning };
     if (values.truncation) body.truncation = values.truncation;
+    if (values["context-management"])
+      body.context_management = await loadJson(
+        values["context-management"],
+        "--context-management",
+      );
     if (values.models) body.models = csv(values.models);
     if (values.provider) body.provider = await loadJson(values.provider, "--provider");
     const plugins = await buildPlugins(values);

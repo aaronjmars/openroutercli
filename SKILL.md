@@ -198,10 +198,11 @@ openrouter messages "..." -m anthropic/claude-sonnet-4.5 --thinking adaptive --e
 openrouter messages "..." -m anthropic/claude-sonnet-4.5 --provider '{"order":["Anthropic"]}' --plugins @plugins.json
 openrouter responses "..." -m openai/gpt-4o-mini --stop "END,STOP" --store --include reasoning.encrypted_content
 openrouter responses "..." -m openai/gpt-5-mini --verbosity low --truncation auto
+openrouter responses "..." -m openai/gpt-5-mini --context-management '[{"type":"compaction","compact_threshold":200000}]'   # server-side compaction of long inputs
 
 # Batches: async jobs at ~half price (chat, responses, messages, embeddings)
 openrouter batches create --endpoint chat -m openai/gpt-4o-mini --file reqs.jsonl --callback-url https://example.com/webhook   # {custom_id, body} per line
-openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl
+openrouter batches wait <id> && openrouter batches results <id> -o out.jsonl   # pages through GET /batches/{id}/results
 openrouter batches create --endpoint chat -m google/gemini-3.8-flash --input gs://bucket/reqs.jsonl   # input already in your storage (gs:// or bq://), allowlisted Vertex BYOK only
 openrouter batches cancel <id>   # stop a running batch; 403 = cancel not enabled for the org, 409 = already ended, 404 = route dropped upstream (Nov 2026)
 
@@ -319,6 +320,7 @@ completes (the CLI retries a 404 once). Ids must look like `gen-...`.
 
 ```bash
 openrouter keys list                     # expired keys hidden; --include-expired shows them
+openrouter keys list --creator <user_id>  # only keys that org member created
 openrouter keys create "agent key" --limit 25 --limit-reset monthly --expires-at 2026-12-31T00:00:00Z
 openrouter keys get <hash>
 openrouter keys update <hash> --name "renamed" --limit 50
@@ -337,7 +339,7 @@ openrouter guardrails list
 openrouter guardrails create "no-paid-models" --allowed-providers "" --enforce-zdr
 openrouter guardrails update <id> --limit-usd 10 --reset-interval daily --include-byok
 openrouter guardrails update <id> --regions europe --builtin-filters email:redact,secrets:block --no-paid-training
-openrouter guardrails update <id> --allow-safety-retention-google --no-allow-safety-retention-other
+openrouter guardrails update <id> --allow-safety-retention-openai --allow-safety-retention-google --no-allow-safety-retention-other
 openrouter guardrails update <id> --harness-models      # codex/claude harnesses only see their vendor's models
 openrouter guardrails update <id> --no-allow-provisional-providers   # exclude unreviewed (provisional) providers
 openrouter guardrails assign-key <id> <key-hash>      # up to 500 hashes per call

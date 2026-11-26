@@ -60,6 +60,8 @@ create / update options:
   --free-publication / --no-free-publication  Allow free endpoints that publish prompts
   --free-training / --no-free-training        Allow free endpoints that train on data
   --paid-training / --no-paid-training        Allow paid endpoints that train on data
+  --allow-safety-retention-openai / --no-allow-safety-retention-openai
+                            Allow ZDR requests to openai/* to use endpoints that retain for safety
   --allow-safety-retention-google / --no-allow-safety-retention-google
                             Allow ZDR requests to google/* to use endpoints that retain for safety
   --allow-safety-retention-other / --no-allow-safety-retention-other
@@ -164,6 +166,7 @@ async function buildBody(values) {
     ["enable_free_model_publication", "free-publication"],
     ["enable_free_model_training", "free-training"],
     ["enable_paid_model_training", "paid-training"],
+    ["allow_safety_retention_openai", "allow-safety-retention-openai"],
     ["allow_safety_retention_google", "allow-safety-retention-google"],
     ["allow_safety_retention_other", "allow-safety-retention-other"],
     ["enforce_first_party_harness_models", "harness-models"],
@@ -205,6 +208,8 @@ const COMMON_FIELDS = {
   "no-free-training": { type: "boolean" },
   "paid-training": { type: "boolean" },
   "no-paid-training": { type: "boolean" },
+  "allow-safety-retention-openai": { type: "boolean" },
+  "no-allow-safety-retention-openai": { type: "boolean" },
   "allow-safety-retention-google": { type: "boolean" },
   "no-allow-safety-retention-google": { type: "boolean" },
   "allow-safety-retention-other": { type: "boolean" },

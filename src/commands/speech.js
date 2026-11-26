@@ -30,14 +30,14 @@ Options:
                        or one image (.png/.jpg/.webp) for voice design.
                        Local files are sent as data URLs.
       --ref-text <t>   Transcript of a --ref clip (repeatable, in --ref order)
-      --format <fmt>   mp3 | pcm (default: mp3, or pcm for HeyGen Voice and
+      --format <fmt>   mp3 | pcm | wav (default: mp3, or pcm for HeyGen Voice and
                        Gemini TTS, which only return pcm; pcm is raw 16-bit audio)
       --speed <n>      Speech speed (e.g. 1.0)
       --delivery <d>   stream (default, audio bytes) | url (store the audio and print
                        JSON with a signed download url, expires_at, media_type; the
                        url is a bearer link valid up to 24h). Falls back to bytes
                        under zero data retention.
-  -o, --out <file>     Output audio file (default: out.mp3 / out.pcm, or stdout if -)
+  -o, --out <file>     Output audio file (default: out.<format>, or stdout if -)
       --provider <json|@file>  Routing and provider options, e.g.
                        '{"zdr":true,"options":{"elevenlabs":{"stability":0.5}}}'
       --extra <json|@file>     Extra fields merged into the body (last)
